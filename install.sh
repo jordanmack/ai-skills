@@ -6,6 +6,16 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 mkdir -p "$SKILLS_DIR"
 
+# Remove orphaned symlinks pointing to this repo
+for link in "$SKILLS_DIR"/*; do
+	[[ ! -L "$link" ]] && continue
+	target=$(readlink "$link")
+	if [[ "$target" == "$REPO_DIR"/* && ! -e "$link" ]]; then
+		rm "$link"
+		echo "  Removed orphan: $(basename "$link")"
+	fi
+done
+
 count=0
 for skill in "$REPO_DIR"/*/; do
     name=$(basename "$skill")
