@@ -16,10 +16,17 @@ Each subdirectory with a `SKILL.md` file is a skill:
 
 ```
 ai-skills/
-├── rust-patterns/
+├── auto-versioning/
+│   ├── SKILL.md
+│   ├── rust-build-version.md
+│   └── vite-version-plugin.js
+├── preferred-libraries/
 │   └── SKILL.md
-├── docker-patterns/
-│   └── SKILL.md
+├── react-ui-patterns/
+│   ├── SKILL.md
+│   └── components/
+│       ├── Tooltip.tsx
+│       └── ...
 └── install.sh
 ```
 
