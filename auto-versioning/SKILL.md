@@ -55,3 +55,10 @@ define: { __APP_VERSION__: JSON.stringify(packageJson.version) }
 // Then in code:
 declare const __APP_VERSION__: string;
 ```
+
+## Commit Behavior
+
+Version bumps alone are not meaningful commits. When you see uncommitted version changes:
+
+- **Ignore** if no other changes exist
+- **Include silently** when committing other work
