@@ -23,6 +23,7 @@ bun create vite my-app --template react-ts
 | Tooltips/popovers | `@floating-ui/react` | Smart positioning |
 | Routing | `navigo` | Lightweight, ~3KB |
 | Single-file build | `vite-plugin-singlefile` | Bundle to one HTML file |
+| Clipboard | Native browser APIs | No library. Use `navigator.clipboard.writeText()` with `document.execCommand('copy')` fallback for non-secure contexts (HTTP). See `react-ui-patterns` for implementation. |
 
 **CSS Conventions:**
 - Always use `cursor: pointer` on interactive elements (buttons, links, dropdowns, checkboxes, toggles, clickable cards, etc.)
