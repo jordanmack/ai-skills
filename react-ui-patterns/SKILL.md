@@ -1,3 +1,16 @@
+---
+name: react-ui-patterns
+description: |
+  Reusable React component patterns with source code: touch-aware tooltips,
+  address/hash truncation display, and theme system. TRIGGER when:
+  (1) building a tooltip that needs to work on both desktop hover and
+  mobile touch, (2) displaying truncated hashes, addresses, or long hex
+  strings with copy-to-clipboard, (3) implementing dark/light/auto theme
+  switching with OS preference detection, (4) building an input that shows
+  truncated value when blurred and full value when focused, (5) needing
+  touch device detection in React. Uses @floating-ui/react-dom.
+---
+
 # React UI Patterns
 
 Touch-aware tooltips, address/hash display with truncation, and editable inputs.

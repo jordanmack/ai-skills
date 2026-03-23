@@ -1,3 +1,17 @@
+---
+name: preferred-libraries
+description: |
+  User's preferred libraries for Rust and React/TypeScript projects.
+  TRIGGER when: (1) adding a new dependency or library to a project,
+  (2) choosing between alternative libraries for a task (routing, HTTP,
+  error handling, CSS, etc.), (3) bootstrapping a new project or module,
+  (4) suggesting a library the user hasn't used before. Covers Rust
+  (thiserror, anyhow, clap, tokio, rocket, reqwest, rusqlite, r2d2,
+  rust-embed, fern) and React/TS (Vite, Tailwind, navigo, Floating UI,
+  react-responsive, vite-plugin-singlefile). Also covers CKB development
+  (use CCC, not Lumos).
+---
+
 # Preferred Libraries
 
 Use these libraries instead of custom implementations.

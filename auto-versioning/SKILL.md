@@ -1,3 +1,12 @@
+---
+name: auto-versioning
+description: |
+  Reference implementations for embedding version and build metadata at
+  compile time. Covers Rust (CARGO_PKG_VERSION, build.rs timestamps,
+  include_str) and Vite (auto-increment patch version plugin, define).
+  Includes commit behavior rules for version bump files.
+---
+
 # Auto-Versioning
 
 Techniques for embedding version and build metadata at compile time across different stacks.
