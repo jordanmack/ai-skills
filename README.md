@@ -5,10 +5,18 @@ Personal skills for Claude Code and other AI assistants.
 ## Installation
 
 ```bash
-./install.sh
+./install.sh <skill-name> <target>
 ```
 
-This creates symlinks in `~/.claude/skills/` pointing to each skill in this repo.
+Symlinks a single skill into a target tool's skills directory. `<target>` is one of:
+
+| Target   | Skills directory      |
+|----------|-----------------------|
+| `claude` | `~/.claude/skills/`   |
+| `grok`   | `~/.grok/skills/`     |
+| `codex`  | `~/.codex/skills/`    |
+
+For example, `./install.sh caveman claude` links the `caveman` skill into Claude Code. Both arguments are required; the script errors if the skill is missing a `SKILL.md` or the target is unknown. Re-running is safe (idempotent).
 
 ## Structure
 
@@ -34,8 +42,8 @@ ai-skills/
 
 1. Create a directory: `mkdir my-skill`
 2. Add `SKILL.md` with instructions
-3. Run `./install.sh` to link it
+3. Run `./install.sh my-skill <target>` to link it into a tool
 
 ## Third-Party Skills
 
-Third-party skills go directly in `~/.claude/skills/` (not in this repo).
+Third-party skills go directly in a tool's skills directory (e.g. `~/.claude/skills/`), not in this repo.
