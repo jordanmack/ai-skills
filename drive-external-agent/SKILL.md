@@ -63,6 +63,8 @@ Because nothing structural reins it in, the prompt carries all the guardrails: n
 
 Each CLI realizes the three modes differently. Pick the row for your CLI, the column for your mode. All three write the answer to a tmp file you then Read.
 
+Set the orchestrating command/tool timeout generously: use at least **30 minutes** by default, and **60 minutes** for anything significant. codex is particularly time-consuming, especially at high reasoning effort or when exploring a codebase.
+
 ### codex (OpenAI)
 
 Subcommand is `codex exec` (non-interactive). `-o <file>` writes only the final assistant message — no stdout redirect needed; progress/metadata goes to stderr. `-` is the stdin sentinel for piped prompts. `--ephemeral` skips session persistence; `--skip-git-repo-check` lets it run outside a repo. In `-c`, string values must be quoted as TOML (`"xhigh"`).
