@@ -1,13 +1,13 @@
 ---
 name: drive-external-agent
-description: Drive an external AI agent CLI (OpenAI codex, xAI grok, Anthropic claude-code) to do work, in one of three capability modes — Sealed (no access, context fed in-prompt), Scoped-read (reads a folder + network, no writes), or Full (writes/acts as the prompt directs). TRIGGER when (1) the user asks to "ask grok/codex/claude", get a "second opinion", or "have another model review/research something"; (2) you want an independent cross-model read before a high-impact, hard-to-reverse decision (architecture, schema, framework, security); (3) you've failed the same approach 3+ times and want a fresh perspective from another model family; (4) you want to delegate a scoped investigation, research task, or autonomous job to a separate agent process. Pin newest models at max reasoning effort so behavior doesn't depend on local config.
+description: Drive an external AI agent CLI (OpenAI codex, xAI grok, Anthropic claude-code) to do work, in one of three capability modes — Sealed (no access, context fed in-prompt), Scoped-read (reads a folder + network, no writes), or Full (writes/acts as the prompt directs). TRIGGER when (1) the user asks to "ask grok/codex/claude", get a "second opinion", or "have another model review/research something"; (2) you want an independent cross-model read before a high-impact, hard-to-reverse decision (architecture, schema, framework, security); (3) you've failed the same approach 3+ times and want a fresh perspective from another model family; (4) you want to delegate a scoped investigation, research task, or autonomous job to a separate agent process. Each CLI has a pinned default (strongest) and secondary model; effort defaults to the highest each CLI offers and is changeable. Pinned IDs are listed in the skill so no lookup is needed.
 ---
 
 # Drive an External Agent CLI
 
 Spawn a separate AI agent (`codex`, `grok`, or `claude`) from the command line to do work for you. The spawned process sees **none of this conversation** — that independence is the value for reviews, and the isolation boundary for delegated work.
 
-**First decide the MODE** (how much access the agent gets), **then** look up the per-CLI flags to realize it. Mode is about blast radius and intent, not which CLI you pick.
+**First decide the MODE** (how much access the agent gets), **then** apply the per-CLI flags that realize it (all listed below). Mode is about blast radius and intent, not which CLI you pick.
 
 ## Pick a mode
 
@@ -61,9 +61,29 @@ Because nothing structural reins it in, the prompt carries all the guardrails: n
 
 ## Per-CLI invocation
 
-Each CLI realizes the three modes differently. Pick the row for your CLI, the column for your mode. All three write the answer to a tmp file you then Read.
+Each CLI realizes the three modes differently. Pick the row for your CLI, the column for your mode. In every case the answer lands in a tmp file you then Read — codex via `-o <file>`, grok and claude via stdout redirect (`> <file>`).
 
 Set the orchestrating command/tool timeout generously: use at least **30 minutes** by default, and **60 minutes** for anything significant. codex is particularly time-consuming, especially at high reasoning effort or when exploring a codebase.
+
+### Models and reasoning effort
+
+Each CLI has **two pinned models** — a strong default and a secondary — so you can name any of the six without a lookup. Naming a CLI bare (just "codex"/"grok"/"claude") means **its default**. There is no "run all the models" shorthand; to review with several models, list them explicitly as a roster (that's the job of the **adversarial-review** skill, which calls this one per model).
+
+| CLI | Default (strongest) | Secondary | Flag form |
+|---|---|---|---|
+| codex | `gpt-5.5` | `gpt-5.4` | `--model <id>` |
+| grok | `grok-build` | `grok-composer-2.5-fast` | `--model <id>` |
+| claude | `opus` (`claude-opus-4-8`) | `sonnet` (`claude-sonnet-4-6`) | `--model <alias\|id>` |
+
+**Reasoning effort defaults to the highest each CLI offers** — that's what the examples below use. It's a dial: drop it when you want a faster/cheaper run. The exact flag and its full ladder per CLI (so you never look it up):
+
+| CLI | Effort flag | Levels (low → high) | Highest |
+|---|---|---|---|
+| codex | `-c 'model_reasoning_effort="<level>"'` | `minimal, low, medium, high, xhigh` | **`xhigh`** (no `max`) |
+| grok | `--effort <level>` | `low, medium, high, xhigh, max` | **`max`** |
+| claude | `--effort <level>` | `low, medium, high, xhigh, max` | **`max`** |
+
+⚠️ **`grok-composer-2.5-fast` does not support reasoning effort at all** — the `--effort` flag is a no-op for it (it's a fast coding model, not a reasoning model). The "highest by default" rule simply doesn't apply; for reasoning-hard review work use `grok-build`.
 
 ### codex (OpenAI)
 
@@ -94,8 +114,8 @@ printf '%s' "$PROMPT" | codex exec \
 # Mode C: swap --sandbox workspace-write; drop --skip-git-repo-check if operating in a repo; prompt defines the job.
 ```
 
-- **Model**: `--model gpt-5.5` (newest, May 2026; defaults drift — always pin).
-- **Thinking**: `-c 'model_reasoning_effort="xhigh"'` — spectrum `minimal<low<medium<high<xhigh`.
+- **Model**: default `--model gpt-5.5` (strongest); secondary `--model gpt-5.4`. Always pin — defaults drift.
+- **Thinking**: `-c 'model_reasoning_effort="xhigh"'` is the highest codex offers (no `max`). See the effort table above to dial it down.
 
 ### grok (xAI)
 
@@ -114,7 +134,7 @@ No `exec` subcommand, no `-o` flag — use top-level `grok` and redirect **stdou
 printf '%s' "$PROMPT" | grok \
   --prompt-file /dev/stdin \
   --model grok-build \
-  --effort xhigh \
+  --effort max \
   --sandbox read-only \
   --disable-web-search \
   --no-subagents \
@@ -123,8 +143,8 @@ printf '%s' "$PROMPT" | grok \
 # Then Read /tmp/grok-out-$$.md
 ```
 
-- **Model**: `--model grok-build` — the only ID accepted for grok.com OAuth accounts (concrete IDs like `grok-4` are rejected).
-- **Thinking**: two separate flags with different value sets — `--effort` accepts `low|medium|high|xhigh|max`; `--reasoning-effort` accepts `none|minimal|low|medium|high|xhigh` (no `max`). Use `--effort xhigh`. For reasoning-hard work, prefer codex or claude regardless.
+- **Model**: default `--model grok-build` (strongest, rides on Grok 4.3); secondary `--model grok-composer-2.5-fast`. These two aliases are the only IDs grok.com OAuth accepts — concrete IDs like `grok-4` are rejected. ⚠️ composer ignores reasoning effort (see note above); use `grok-build` for reasoning-hard work.
+- **Thinking**: `--effort max` (highest — see the effort table above). Note grok has a second, easily-confused flag, `--reasoning-effort`, whose value set differs (`none|minimal|low|medium|high|xhigh`, no `max`) — prefer `--effort`. For reasoning-hard work, prefer codex or claude regardless.
 
 ### claude (Anthropic)
 
@@ -148,8 +168,8 @@ cd /tmp && printf '%s' "$PROMPT" | claude -p \
 # Then Read /tmp/claude-out-$$.md
 ```
 
-- **Model**: `--model opus` — alias for the newest Opus (`claude-opus-4-8`, May 2026). Aliases or full IDs both work.
-- **Thinking**: `--effort max` — values `low|medium|high|xhigh|max`. Unlike grok's `--reasoning-effort`, `max` IS valid here and is the top tier.
+- **Model**: default `--model opus` (`claude-opus-4-8`, strongest); secondary `--model sonnet` (`claude-sonnet-4-6`). Aliases or full IDs both work.
+- **Thinking**: `--effort max` is the top tier (highest). Values `low|medium|high|xhigh|max`. See the effort table above to dial it down.
 - `--tools ""` self-reports a few LSP/OAuth tools remain — fine for a stateless opinion; the no-explore preamble backs it up.
 
 ---
