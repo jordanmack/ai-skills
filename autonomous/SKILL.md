@@ -21,7 +21,7 @@ Done means everything in scope works, no gaps or stubs, proven against the proje
 
 ## Work Without Stopping; Delegate to Subagents
 
-Push as far as you can on your own. When something's unclear, research it and hunt down the governing spec; if it stays unresolved, record it, set it aside, and work elsewhere. Don't let one blocked thread stall the rest. Move bounded work into subagents to keep your own context light or to get an independent read, restating the scope and safety rules in their prompt since they inherit nothing. You stay the integrator: subagents never run gated actions, and you judge what they return.
+Push as far as you can on your own. When something's unclear, research it and hunt down the governing spec; if it stays unresolved, record it, set it aside, and work elsewhere. Don't let one blocked thread stall the rest. Commit each logical change as you go, so a long run stays revertable and its history legible. Move bounded work into subagents to keep your own context light or to get an independent read, restating the scope and safety rules in their prompt since they inherit nothing. You stay the integrator: subagents never run gated actions, and you judge what they return.
 
 ## Choose the Right Design Over the Easy One
 
