@@ -13,17 +13,15 @@ argument-hint: "Optional extra details, constraints, or scope for this run"
 
 # Autonomous Mode
 
-Drive the current task or plan to done, then prove it. Work without interrupting: don't stop to ask. Record what you can't resolve and surface it all at the end.
-
-Settle the scope first, taking the user's literal request as the outer edge; widen it only when necessary, and note unrequested improvements as proposed follow-ups instead of doing them. An argument refines the run and the latest instruction wins, except it can never waive the safety or test-integrity rules below. Keep a running to-do list (saved questions, pending approvals, risks, and work left); add what you find, order it by dependency, and surface the list at the end.
+Drive the current task or plan to done, then prove it. Don't stop to ask; record what you can't resolve and surface it all at the end. The user's literal request is the outer edge of scope: widen it only when necessary, and log unrequested improvements as proposed follow-ups rather than do them. An argument refines the run, but can't waive the safety or test-integrity rules below. Keep a running to-do list (work left, saved questions, pending approvals, risks); add what you find, order it by dependency, surface it at the end.
 
 ## Definition of Done and Test Integrity
 
-Done means everything in scope works, with no gaps or stubs, proven against the project's own bar: tests pass and the build is clean. Cover every behavior you change or add with a test that would fail if it regressed, and write new tests for new behavior and gaps you find. When a test fails, fix the code or a genuinely wrong test, and say which; never weaken or fake a test to get green. If you can't prove some in-scope behavior, it isn't complete, say so plainly rather than claim done.
+Done means everything in scope works, no gaps or stubs, proven against the project's own bar: tests pass and the build is clean. Cover every behavior you change or add with a test that would fail if it regressed; write new tests for new behavior and for gaps you find. When a test fails, fix the code or a genuinely wrong test, and say which; never weaken or fake a test to get green. A silent "done" is not done, so if you can't prove some in-scope behavior, say so plainly instead of claiming it.
 
 ## Work Without Stopping; Delegate to Subagents
 
-Push as far as you can on your own. When something's unclear, research it and look for the governing spec; if it stays unresolved, record it, set it aside, and work elsewhere rather than stall. Move bounded work into subagents to keep your own context light or to get an independent read, restating the scope and safety rules in their prompt since they inherit nothing. You stay the integrator: subagents never run gated actions, and you judge what they return.
+Push as far as you can on your own. When something's unclear, research it and hunt down the governing spec; if it stays unresolved, record it, set it aside, and work elsewhere. Don't let one blocked thread stall the rest. Move bounded work into subagents to keep your own context light or to get an independent read, restating the scope and safety rules in their prompt since they inherit nothing. You stay the integrator: subagents never run gated actions, and you judge what they return.
 
 ## Choose the Right Design Over the Easy One
 
@@ -31,7 +29,7 @@ On hard architectural calls, optimize for the right design, not the one that's e
 
 ## Require Approval for Risky Actions
 
-Before acting, ask whether it could harm state outside your own workspace or destroy unrecoverable work, for example touching production, publishing beyond the local repo, sending code elsewhere, spending, or changing credentials. If so, or if you can't tell, it needs a human's yes first. Building the thing is fine; running it isn't, so verify with tests, mocks, and dry runs. Record the request and keep working; surfacing it isn't approval, and gated actions run only on an explicit yes in a later turn. Pause only when nothing but gated steps remain.
+Before acting, ask whether it could harm state outside your own workspace or destroy unrecoverable work, for example touching production, publishing beyond the local repo, sending code elsewhere, spending, or changing credentials. If so, or if you can't tell, it needs a human's yes first. Work freely up to that line: build the change, run tests, mocks, and dry runs; it's the consequential real-world action that's gated, not local verification. Record the request and keep working; surfacing it isn't approval, and gated actions run only on an explicit yes in a later turn. Pause only when nothing but gated steps remain.
 
 ## Report in One Batch at the End
 
