@@ -104,6 +104,20 @@ Each CLI has **two pinned models** — a strong default and a secondary — so y
 
 ⚠️ **`grok-composer-2.5-fast` does not support reasoning effort at all** — the `--effort` flag is a no-op for it (it's a fast coding model, not a reasoning model). The "highest by default" rule simply doesn't apply; for reasoning-hard review work use `grok-build`.
 
+### Attaching images / files (vision)
+
+All three CLIs are agentic and have a file-reading tool, and their pinned models are vision-capable (grok-build-0.1, gpt-5.5, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
+
+```bash
+# Verified on grok (build + composer-2.5-fast); generalizes to codex/claude (both read files natively).
+GROK_CLAUDE_AGENTS_ENABLED=0 grok --no-memory --model grok-build --effort high --cwd /tmp/shots \
+  --single "Open /tmp/shots/a.png and /tmp/shots/b.png and review each for visual/UX issues." > "$OUT" 2>"$ERR"
+```
+
+- **grok inline alternative (no file read):** `grok --prompt-json '<json>'` takes **ACP content blocks** — mix text and image blocks: `[{"type":"text","text":"…"},{"type":"image","data":"<RAW base64, no data: prefix>","mimeType":"image/png"}]`. Use this when the agent can't read the path (Mode A sealed) or you'd rather pass bytes inline. (A trivially tiny image — e.g. a 1×1 px — may be dismissed as "no image provided"; use a real screenshot.) `--prompt-file` is **text-only** — it does **not** carry images; use `--prompt-json` or the file-path method.
+- **Multi-image reliability:** `grok-build` reliably reviews several images in one call (verified 2, 3, and 7). `grok-composer-2.5-fast` *has* vision but **intermittently early-exits** on multi-image tasks (announces intent, then returns ~100 bytes; ~1-in-5 at 3 images) — drive it **one image per call**, or add a completion nudge ("write the full review now; do not stop after announcing intent") and **retry on a short/empty output**. For a real multi-image visual pass, prefer `grok-build`.
+- **Caveat — confident vision hallucinations:** vision output can invent details (a verified case: grok-build reported a duplicated-word typo in UI text that wasn't there). Treat pixel-level findings like any other model claim — **verify against the source/file** before acting (refute-before-accept).
+
 ### codex (OpenAI)
 
 Subcommand is `codex exec` (non-interactive). `-o <file>` writes only the final assistant message — no stdout redirect needed; progress/metadata goes to stderr. `-` is the stdin sentinel for piped prompts. `--ephemeral` skips session persistence; `--skip-git-repo-check` lets it run outside a repo. In `-c`, string values must be quoted as TOML (`"xhigh"`).
