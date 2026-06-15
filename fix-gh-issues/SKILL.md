@@ -38,11 +38,12 @@ If a parameter is genuinely open, ask it ONCE up front (single question), then p
 
 1. List open issues (number order is just a stable starting view, not the work order):
    `gh issue list --state open --limit 100 --json number,title,labels --jq 'sort_by(.number)[]'`
-2. **Read each candidate issue's BODY and its COMMENTS** before deciding to work it:
+2. **Read each candidate issue's BODY and its COMMENTS** before deciding to work it. Re-read ALL candidates every cycle, explicitly including ones you previously skipped and ones carrying a `needs-info` label:
    `gh issue view <N> --json title,body,comments,labels`
    The comments are not decoration; they carry the real status:
    - A comment may say the issue is **already fixed / merged / closed elsewhere** (close it with the evidence instead of reimplementing).
    - A comment may mark it **blocked** by another issue, an operator decision, a backend gap, or an unshipped dependency → **skip it**, record why, and move to the next number.
+   - A `needs-info` label means a prior cycle left it **awaiting the operator or someone else**. Check whether the answer has landed: if the operator answered in a comment or the blocking dependency merged, remove the label (`gh issue edit <N> --remove-label needs-info`) and disposition it normally (the answer may mean implement, close, deduplicate, or defer, not always implement); otherwise skip it again.
    - A comment may **re-scope, supersede, or duplicate** it (e.g. "dup of #14") → handle the pair together or close as duplicate.
    - A comment (often from a prior run) may record **partial progress** or a chosen approach → resume from there, do not restart.
    - A second-opinion comment ("Codex + Grok converged: file/skip") signals the agreed disposition.
@@ -83,6 +84,8 @@ For each actionable issue **N**:
    If the working tree of the main checkout has an unstaged pre-existing change, `git stash -u` around the checkout/merge so it survives.
 10. **Update the knowledge graph** from the MAIN checkout (never the worktree, which would write a stray duplicate): `graphify update .`, then a SEPARATE commit `Update knowledge graph for the issue #N fix`.
 11. **Update the issue, and close it only if the work is actually complete.** If the fix is done and verified, close with a comment naming the LOCAL commit hash (commits are local/unpushed, so the `closes #N` keyword will not auto-fire): `gh issue close N --comment "Fixed in commit <hash> ...".` If the work is partial, blocked, or unverified, leave the issue OPEN and post a status comment recording what was done, what remains, and any blocker, instead of closing it.
+
+    **Blocked mid-work / needs operator input.** "Mid-work" means you already selected the issue as actionable and began investigation or implementation, then hit a blocker that needs the operator or another person (a decision you cannot make, missing information, an external dependency). Do NOT stall the run: post a comment on the issue stating the specific question or blocker plus what you completed so far, apply the `needs-info` label (creating it first if absent: `gh label create needs-info --description "Blocked on operator or external input" 2>/dev/null; gh issue edit N --add-label needs-info`), leave the issue OPEN, and move to the next actionable issue. The next cycle (§1) re-checks `needs-info` issues and resumes any the operator has answered. (This is distinct from a clearly-blocked issue caught at triage, which you simply skip per §1 without a comment.)
 12. **File follow-ups** for any deferred non-fix, out-of-scope discovery, or test-infra gap as a `known-open` GitHub issue (do not let it vanish into a commit message).
 13. Mark the task complete, then return to §1 for the next issue.
 
@@ -107,5 +110,5 @@ Keep a durable resume note in memory (the project memory file for this run): the
 ## 5. End-of-Cycle / Idle
 
 When the actionable backlog is drained:
-- Surface ONE batched report: the issues fixed (with commit hashes), any skipped/blocked ones and why, pending approvals (e.g. the unpushed master), residual risks, and the follow-ups filed.
+- Surface ONE batched report: the issues fixed (with commit hashes), any skipped/blocked ones and why, the `needs-info` issues with the specific open question each is awaiting (these are the ones genuinely blocked on a human), pending approvals (e.g. the unpushed master), residual risks, and the follow-ups filed.
 - Schedule a self-paced wake-up (`ScheduleWakeup`, long interval when idle) to re-scan for new issues, unless told to stop. Re-enter at §1 on wake.
