@@ -94,7 +94,7 @@ Each CLI has **two pinned models** — a strong default and a secondary — so y
 | grok | `grok-build` | `grok-composer-2.5-fast` | `--model <id>` |
 | claude | `opus` (`claude-opus-4-8`) | `sonnet` (`claude-sonnet-4-6`) | `--model <alias\|id>` |
 
-**This skill's convention is to run at the highest effort each CLI offers** — the examples below pin it explicitly, because you can't rely on the CLI's own default being highest (codex's pinned models default to `medium`, and a user `config.toml` may set something else). So always pass the effort flag; it's a dial you can drop for a faster/cheaper run. The exact flag and its full ladder per CLI (so you never look it up):
+**Reasoning-effort policy:** every external agent run must pass an explicit effort flag. If the operator specified a thinking / reasoning-effort level for this run, use that exact level. Otherwise use the highest supported level for the selected CLI/model. Never rely on CLI defaults or user config. This skill is the enforcement point for external spawns, including calls from **autonomous** and **adversarial-review**; caller-provided run context that explicitly names an effort level takes precedence over the highest-effort default. The exact flag and its full ladder per CLI (so you never look it up):
 
 | CLI | Effort flag | Levels (low → high) | Highest |
 |---|---|---|---|
@@ -102,7 +102,7 @@ Each CLI has **two pinned models** — a strong default and a secondary — so y
 | grok | `--effort <level>` | `low, medium, high, xhigh, max` | **`max`** |
 | claude | `--effort <level>` | `low, medium, high, xhigh, max` | **`max`** |
 
-⚠️ **`grok-composer-2.5-fast` does not support reasoning effort at all** — the `--effort` flag is a no-op for it (it's a fast coding model, not a reasoning model). The "highest by default" rule simply doesn't apply; for reasoning-hard review work use `grok-build`.
+⚠️ **`grok-composer-2.5-fast` does not support reasoning effort at all** — the `--effort` flag is a no-op for it (it's a fast coding model, not a reasoning model). If the operator named an effort level, use `grok-build` instead unless the operator explicitly asked for composer. For reasoning-hard review work use `grok-build`; if composer is still selected, report that effort was not available.
 
 ### Attaching images / files (vision)
 
@@ -110,7 +110,7 @@ All three CLIs are agentic and have a file-reading tool, and their pinned models
 
 ```bash
 # Verified on grok (build + composer-2.5-fast); generalizes to codex/claude (both read files natively).
-GROK_CLAUDE_AGENTS_ENABLED=0 grok --no-memory --model grok-build --effort high --cwd /tmp/shots \
+GROK_CLAUDE_AGENTS_ENABLED=0 grok --no-memory --model grok-build --effort max --cwd /tmp/shots \
   --single "Open /tmp/shots/a.png and /tmp/shots/b.png and review each for visual/UX issues." > "$OUT" 2>"$ERR"
 ```
 
@@ -152,7 +152,7 @@ printf '%s' "$PROMPT" | codex exec \
 ```
 
 - **Model**: default `--model gpt-5.5` (strongest); secondary `--model gpt-5.4`. Always pin — defaults drift.
-- **Thinking**: `-c 'model_reasoning_effort="xhigh"'` is the highest codex offers (no `max`). See the effort table above to dial it down.
+- **Thinking**: default to `-c 'model_reasoning_effort="xhigh"'` (highest; no `max`). If the operator or calling skill explicitly named `low`, `medium`, `high`, or `xhigh` for this run, use that value instead. Never omit the setting.
 
 ### grok (xAI)
 
@@ -189,7 +189,7 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 ```
 
 - **Model**: default `--model grok-build` (strongest, rides on Grok 4.3); secondary `--model grok-composer-2.5-fast`. These two aliases are the only IDs grok.com OAuth accepts — concrete IDs like `grok-4` are rejected. `grok-build` is the account default here, but the default *can* vary by account/version — if running bare `grok` matters, confirm with `grok models` (the line marked `(default)`). ⚠️ composer ignores reasoning effort (see note above); use `grok-build` for reasoning-hard work.
-- **Thinking**: `--effort max` (highest — see the effort table above; verified to run on `grok-build`). Note grok has a second, easily-confused flag, `--reasoning-effort`, whose value set differs (`none|minimal|low|medium|high|xhigh`, no `max`) — prefer `--effort`. For reasoning-hard work, prefer codex or claude regardless.
+- **Thinking**: default to `--effort max` (highest; verified to run on `grok-build`). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Prefer `--effort`; never omit it on effort-capable models. Note grok has a second, easily-confused flag, `--reasoning-effort`, whose value set differs (`none|minimal|low|medium|high|xhigh`, no `max`) — prefer `--effort`. For reasoning-hard work, prefer codex or claude regardless.
 - **Subagents**: the Mode A example passes `--no-subagents` to stop fan-out. For **Mode C**, add it too unless you specifically want grok spawning subagents — they widen blast radius beyond what the prompt scopes.
 
 ### claude (Anthropic)
@@ -235,11 +235,11 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
   --strict-mcp-config \
   --no-session-persistence --output-format text \
   > /tmp/claude-out-$$.md 2>/tmp/claude-err-$$.md )
-# Mode C: omit --tools (full toolset); the prompt defines scope/guardrails.
+# Mode C: omit --tools (full toolset); keep --effort at the resolved level; the prompt defines scope/guardrails.
 ```
 
 - **Model**: default `--model opus` (`claude-opus-4-8`, strongest); secondary `--model sonnet` (`claude-sonnet-4-6`). Aliases or full IDs both work.
-- **Thinking**: `--effort max` is the top tier (highest). Values `low|medium|high|xhigh|max`. See the effort table above to dial it down.
+- **Thinking**: default to `--effort max` (highest). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Never omit the effort flag.
 - **MCP/LSP residue**: `--tools ""` **on its own** still leaves LSP plus any authenticated MCP tools live (verified: Gmail/Drive/Calendar auth tools remained) — which is why the Mode A example above pairs it with `--strict-mcp-config` to drop MCP (LSP still survives). Without `--strict-mcp-config` those MCP tools can reach the network/external data; with it, you're left with LSP only. The no-explore preamble backs up the built-in cut regardless.
 - **Don't trust the agent's self-report of its tools**: with the same flags, claude sometimes claims it has Write/Bash/etc. and sometimes correctly says it doesn't (verified — the actual capability cut holds either way; only the *narration* is unreliable). Gate orchestrator logic on the flags you passed, never on what the spawned agent says it can do.
 - ⚠️ **`--tools` names are not validated** — a typo (`WebFetc`) or unknown name is **silently dropped**, and the run still exits 0 with that tool simply absent (verified). So a Mode B run with a misspelled `WebFetch` quietly loses web access while looking successful. Double-check the tool names; don't infer from a clean exit that all requested tools loaded.
@@ -288,6 +288,6 @@ OUTPUT: [for B: the findings format. for C: what to report back after acting]
 
 ## When NOT to use / reading the response
 
-Skip for trivia, for questions about *this* conversation's state (the spawned process has no memory of it), and for tight iteration loops (max-effort runs are slow). The external agent's view is one input — you and the user have final say.
+Skip for trivia, for questions about *this* conversation's state (the spawned process has no memory of it), and for tight iteration loops. Max-effort runs are slow; use a lower tier only when the operator explicitly requested it for this run. The external agent's view is one input — you and the user have final say.
 
 After running, Read the output file and report: (1) the recommendation/result in one sentence, (2) your agree/disagree or assessment, (3) your call. **Synthesize — never paste verbatim.** If you ran more than one CLI, note where they converge and diverge — agreement across model families is strong signal; disagreement is worth surfacing explicitly.
