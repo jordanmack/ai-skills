@@ -16,7 +16,9 @@ argument-hint: "Optional: a specific issue number, a label filter, or 'continue'
 
 Drive the open GitHub-issue backlog to done, one issue at a time, each in its own disposable git worktree that is cleaned up automatically. This skill encodes the exact workflow, safety rules, and verification discipline this project uses. It is meant to run under Autonomous Mode (orchestrate via subagents, batch questions and approvals to the end, never stall the run on one blocked thread).
 
-Operate as an orchestrator: delegate each self-contained unit (implementation, review, live verification, stack standup) to a subagent; you adjudicate and hold the final call. Work inline only when delegating costs more than it saves.
+Operate as an orchestrator: delegate each self-contained unit (implementation, review, live verification, stack standup) to a subagent; you adjudicate and hold the final call.
+
+**HARD RULE — never implement in the main session.** Every file write that is part of fixing an issue — production code, tests, and issue documentation — MUST go through a subagent working in that issue's worktree. The main session NEVER edits or writes those files itself, not even for a one-line or "obviously trivial" fix; spin up a subagent regardless. This has no exception and no cost-benefit escape hatch: a fix touched directly by the main session is a process violation, back it out and redo it through a subagent. The main session is reserved for orchestration only — triage, adjudication, and the final orchestration writes called out in §2 (worktree setup, explicit-staging commits, the FF-merge and cleanup, `graphify update`, `gh` issue commands, and the durable memory note). When in doubt about whether a write is "implementation," treat it as implementation and delegate.
 
 **Decide, don't pause, on anything reversible.** Only the gated actions in §3 (push, production, credentials, persistent data) are worth a pause. Processing order, scoping, triviality calls — your call: decide, note the one-line reason, keep moving. Batch genuinely-open questions into the end-of-cycle report (§5), never mid-loop.
 
@@ -68,7 +70,7 @@ For each actionable issue **N**:
    - Web UI work: `cd <worktree>/redclaw-web-ui && bun install` (no `node_modules` otherwise).
    - Rust work: the test build needs `redclaw-web-ui/dist/` to EXIST (the `redclaw-web` `rust_embed` derive fails without it). Either `bun install && bun run build` in the worktree's web UI, or drop a placeholder `<worktree>/redclaw-web-ui/dist/index.html` (gitignored). For integration tests that hit the DB, also point the fastembed cache at the shared host cache (symlink) if the path is needed.
 3. **Read before you write** (ARCHITECTURE.md §-pointers, the issue's named files, immediate callers). `docs/ARCHITECTURE.md` is the source of truth; exhaust it before treating a question as open.
-4. **Implement** inside the worktree. Match conventions (tabs, terse comments, NO em dashes). Surgical changes only; fix the issue, do not refactor adjacent code. Extract pure helpers for anything with logic so it is unit-testable without a React renderer.
+4. **Implement** inside the worktree — **always via a subagent, never the main session** (see the HARD RULE above; this covers code, tests, and issue docs alike). Delegate the implementation to a subagent pointed at this worktree and adjudicate its result. Match conventions (tabs, terse comments, NO em dashes). Surgical changes only; fix the issue, do not refactor adjacent code. Extract pure helpers for anything with logic so it is unit-testable without a React renderer.
 5. **Cover the change with tests** that fail on regression (web: `bun test` in `tests/`, outside `src/`; Rust: an integration test under `tests/`, run at `--test-threads 2`). Tests encode WHY, not just WHAT.
 6. **Verify in the worktree** with ALL gates green:
    - Web: `bun run lint` (0), `bunx tsc -b` (0), `bun run test` (pass), `bun run build` (0).
