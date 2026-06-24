@@ -150,6 +150,11 @@ Deliver the four phases as labeled sections: **Perspectives**,
 **Contradictions**, **Briefing**, **Peer Review**, and a closing **Open
 Questions** list drawn from the frontier question and weakest links.
 
+Write the result to a markdown file in the current working directory. Name it
+`storm-research-<topic>.md`: always prefixed with `storm-research-`, always
+lowercase, with spaces replaced by dashes. Example: a run on "EV battery
+supply chains" produces `storm-research-ev-battery-supply-chains.md`.
+
 ## Reference
 
 - Stanford STORM: https://github.com/stanford-oval/storm (MIT)
