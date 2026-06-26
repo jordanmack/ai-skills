@@ -94,7 +94,7 @@ Each CLI has **two pinned models** — a strong default and a secondary — so y
 | CLI | Default (strongest) | Secondary | Flag form |
 |---|---|---|---|
 | codex | `gpt-5.5` | `gpt-5.4` | `--model <id>` |
-| grok | `grok-build` | `grok-composer-2.5-fast` | `--model <id>` |
+| grok | `grok-4-3` | `grok-composer-2.5-fast` | `--model <id>` |
 | claude | `opus` (`claude-opus-4-8`) | `sonnet` (`claude-sonnet-4-6`) | `--model <alias\|id>` |
 
 **Reasoning-effort policy:** every external agent run must pass an explicit effort flag. If the operator specified a thinking / reasoning-effort level for this run, use that exact level. Otherwise use the highest supported level for the selected CLI/model. Never rely on CLI defaults or user config. This skill is the enforcement point for external spawns, including calls from **autonomous** and **adversarial-review**; caller-provided run context that explicitly names an effort level takes precedence over the highest-effort default. The exact flag and its full ladder per CLI (so you never look it up):
@@ -208,7 +208,7 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Then Read /tmp/grok-out-$$.md
 ```
 
-- **Model**: default `--model grok-build` (strongest, rides on Grok 4.3); secondary `--model grok-composer-2.5-fast`. These two aliases are the only IDs grok.com OAuth accepts — concrete IDs like `grok-4` are rejected. `grok-build` is the account default here, but the default *can* vary by account/version — if running bare `grok` matters, confirm with `grok models` (the line marked `(default)`). ⚠️ composer ignores reasoning effort (see note above); use `grok-build` for reasoning-hard work.
+- **Model**: default `--model grok-4-3` (strongest); secondary `--model grok-composer-2.5-fast`. Aliases `grok-build` and concrete `grok-4-3` both accepted. Confirm current default with `grok models`. ⚠️ composer ignores reasoning effort; use `grok-4-3` or `grok-build` for reasoning-hard work.
 - **Thinking**: default to `--effort max` (highest; verified to run on `grok-build`). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Prefer `--effort`; never omit it on effort-capable models. Note grok has a second, easily-confused flag, `--reasoning-effort`, whose value set differs (`none|minimal|low|medium|high|xhigh`, no `max`) — prefer `--effort`. For reasoning-hard work, prefer codex or claude regardless.
 - **Subagents**: the Mode A example passes `--no-subagents` to stop fan-out. For **Mode C**, add it too unless you specifically want grok spawning subagents — they widen blast radius beyond what the prompt scopes.
 
