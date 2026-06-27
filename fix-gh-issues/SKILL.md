@@ -95,7 +95,7 @@ For each actionable issue **N**:
 
 ## 3. Safety and Isolation (NON-NEGOTIABLE)
 
-- **Never disrupt the operator's running instance.** The operator may have a live test instance up (containers `redclaw-test-jm-*`, default DB ports Postgres `55550` / Qdrant gRPC `55551`, a web port). Do not use its DB, do not stop/restart/`down` its containers, do not run tests against its ports.
+- **Never disrupt any running instance.** The operator or other agents/processes may have live test instances up (containers matching `redclaw-test-*` or `redclaw-*`, default DB ports Postgres `55550` / Qdrant gRPC `55551`, web ports). Do not use their DBs, do not stop/restart/`down` their containers, do not run tests against their ports.
 - **Stand up your OWN isolated stack** for live/integration verification, on DIFFERENT ports (e.g. `55560`/`55561`). Tear down only what you started; confirm the operator's containers are still healthy at the end. NEVER `docker kill` / `killall`; only manage containers you started.
 - **Build discipline:** always `-j 4` (`CARGO_BUILD_JOBS=4 cargo ... -j 4`); the full suite at 2 threads. A full-suite SIGTERM (signal 15) is contention, not a regression; re-run that test in isolation first. One `cargo` invocation at a time.
 - **Permission gates:** never push, touch production, change credentials, or alter persistent data without explicit operator approval. Local build/test/dry-run is free; the consequential real-world action is gated. Pushing the merged commits is the OPERATOR'S call; leave master ahead-of-origin and unpushed unless told otherwise. Never commit secrets.
