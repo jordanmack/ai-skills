@@ -1,5 +1,5 @@
 ---
-name: fix-gh-issues
+name: redclaw-fix-gh-issues
 description: |
   Restart the autonomous RedClaw GitHub-issue processing loop: triage open
   issues (reading each issue's COMMENTS for status clues and blockers), then
@@ -8,11 +8,11 @@ description: |
   commit reference. Continuously picks up newly filed issues.
   TRIGGER when the operator wants to resume or start fixing open GitHub issues
   in this repo, says "fix issues" / "work the issues" / "continue fixing
-  issues" / "process the issue backlog", invokes /fix-gh-issues, or names this loop.
+  issues" / "process the issue backlog", invokes /redclaw-fix-gh-issues, or names this loop.
 argument-hint: "Optional: a specific issue number, a label filter, or 'continue'"
 ---
 
-# /fix-gh-issues: Autonomous RedClaw GitHub-Issue Processing Loop
+# /redclaw-fix-gh-issues: Autonomous RedClaw GitHub-Issue Processing Loop
 
 Drive the open GitHub-issue backlog to done, one issue at a time, each in its own disposable git worktree that is cleaned up automatically. This skill encodes the exact workflow, safety rules, and verification discipline this project uses. It is meant to run under Autonomous Mode (orchestrate via subagents, batch questions and approvals to the end, never stall the run on one blocked thread).
 
