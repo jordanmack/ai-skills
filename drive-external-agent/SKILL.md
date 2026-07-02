@@ -89,13 +89,24 @@ Set the orchestrating command/tool timeout generously: use at least **30 minutes
 
 ### Models and reasoning effort
 
-Each CLI has **two pinned models** — a strong default and a secondary — so you can name any of the six without a lookup. Naming a CLI bare (just "codex"/"grok"/"claude") means **its default**. There is no "run all the models" shorthand; to review with several models, list them explicitly as a roster (that's the job of the **adversarial-review** skill, which calls this one per model).
+Each CLI pins a **primary** (strongest) and a **secondary**, so you can name either without a lookup; naming a CLI bare (just "codex"/"grok"/"claude") means **its primary**. Beyond those, the *Other tiers* table lists every remaining model the CLI itself reports, for when the operator asks for one by name. There is no "run all the models" shorthand; to review with several models, list them explicitly as a roster (that's the job of the **adversarial-review** skill, which calls this one per model). Flag form is `--model <id>` for all three (claude also accepts an alias). Model lists drift — reconfirm with `grok models`, `codex debug models` (JSON catalog), or claude's `/model` picker (claude has no headless list command).
 
-| CLI | Default (strongest) | Secondary | Flag form |
+| CLI | Primary (strongest) | Secondary | Flag form |
 |---|---|---|---|
 | codex | `gpt-5.5` | `gpt-5.4` | `--model <id>` |
 | grok | `grok-4-3` | `grok-composer-2.5-fast` | `--model <id>` |
-| claude | `opus` (`claude-opus-4-8`) | `sonnet` (`claude-sonnet-4-6`) | `--model <alias\|id>` |
+| claude | `opus` (`claude-opus-4-8`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
+
+**Other tiers** — remaining models each CLI reports as available (name explicitly with `--model`; not defaults):
+
+| CLI | Model | Note |
+|---|---|---|
+| codex | `gpt-5.4-mini` | Smaller/cheaper 5.4; use for light tasks. |
+| grok | `grok-build` | Distinct model from grok-4-3 (not an alias); reasoning-capable. |
+| claude | `fable` (`claude-fable-5`) | Most capable for hardest/longest tasks, but **most expensive** — kept out of primary/secondary for cost. Reach for it only when opus/sonnet fall short. |
+| claude | `haiku` (`claude-haiku-4-5`) | Fastest, for quick answers. |
+
+⚠️ **`grok-build` and `grok-4-3` are two distinct catalog entries, not a model-and-its-alias.** `grok models` lists both by name (alongside `grok-composer-2.5-fast`). Don't describe `grok-build` as "an alias of grok-4-3." Treat "Grok Build" the model as separate from any tool of a similar name.
 
 **Reasoning-effort policy:** every external agent run must pass an explicit effort flag. If the operator specified a thinking / reasoning-effort level for this run, use that exact level. Otherwise use the highest supported level for the selected CLI/model. Never rely on CLI defaults or user config. This skill is the enforcement point for external spawns, including calls from **autonomous** and **adversarial-review**; caller-provided run context that explicitly names an effort level takes precedence over the highest-effort default. The exact flag and its full ladder per CLI (so you never look it up):
 
@@ -109,7 +120,7 @@ Each CLI has **two pinned models** — a strong default and a secondary — so y
 
 ### Attaching images / files (vision)
 
-All three CLIs are agentic and have a file-reading tool, and their pinned models are vision-capable (grok-build-0.1, gpt-5.5, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
+All three CLIs are agentic and have a file-reading tool, and their pinned models are vision-capable (grok-4-3/grok-build, gpt-5.5, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
 
 ```bash
 # Verified on grok (build + composer-2.5-fast); generalizes to codex/claude (both read files natively).
@@ -208,7 +219,7 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Then Read /tmp/grok-out-$$.md
 ```
 
-- **Model**: default `--model grok-4-3` (strongest); secondary `--model grok-composer-2.5-fast`. Aliases `grok-build` and concrete `grok-4-3` both accepted. Confirm current default with `grok models`. ⚠️ composer ignores reasoning effort; use `grok-4-3` or `grok-build` for reasoning-hard work.
+- **Model**: primary `--model grok-4-3` (strongest); secondary `--model grok-composer-2.5-fast`; also available `--model grok-build`. `grok-build` and `grok-4-3` are **distinct catalog entries**, not an alias pair — `grok models` lists all three by name. Confirm the current set with `grok models`. ⚠️ composer ignores reasoning effort; use `grok-4-3` or `grok-build` for reasoning-hard work.
 - **Thinking**: default to `--effort max` (highest; verified to run on `grok-build`). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Prefer `--effort`; never omit it on effort-capable models. Note grok has a second, easily-confused flag, `--reasoning-effort`, whose value set differs (`none|minimal|low|medium|high|xhigh`, no `max`) — prefer `--effort`. For reasoning-hard work, prefer codex or claude regardless.
 - **Subagents**: the Mode A example passes `--no-subagents` to stop fan-out. For **Mode C**, add it too unless you specifically want grok spawning subagents — they widen blast radius beyond what the prompt scopes.
 
