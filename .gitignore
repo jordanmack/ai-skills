@@ -1,2 +1,3 @@
 # RedClaw-specific skills are kept local, not tracked in this shared repo
-redclaw-*/
+rc-fix-gh-issues/
+rc-ui-qa/
