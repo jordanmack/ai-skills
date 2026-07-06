@@ -1,5 +1,5 @@
 ---
-name: fix-gh-issues
+name: gh-fix-issues
 description: |
   Generic autonomous GitHub-issue processing: triage the in-scope open
   issues (reading each issue's COMMENTS for status clues and blockers), then
@@ -11,13 +11,13 @@ description: |
   Processes the in-scope backlog once, then stops and reports.
   TRIGGER when the operator wants to start fixing open GitHub issues in a
   repo with NO project-specific wrapper for this workflow: says "fix issues" /
-  "work the issues" / "process the issue backlog", or invokes /fix-gh-issues.
-  A project wrapper skill (its description will say it wraps /fix-gh-issues)
+  "work the issues" / "process the issue backlog", or invokes /gh-fix-issues.
+  A project wrapper skill (its description will say it wraps /gh-fix-issues)
   always takes precedence in its repo — it invokes this skill with its profile.
 argument-hint: "Optional: scope (an issue number or label filter) plus any run-relevant details; default is all open issues"
 ---
 
-# /fix-gh-issues: Autonomous GitHub-Issue Processing (generic core)
+# /gh-fix-issues: Autonomous GitHub-Issue Processing (generic core)
 
 Drive the in-scope open GitHub-issue backlog to done, one issue at a time, each in its own disposable git worktree that is cleaned up automatically, then stop and report (§5). It is meant to run under Autonomous Mode (orchestrate via subagents, batch questions and approvals to the end, never stall the run on one blocked thread). This file carries only the workflow; every project-specific fact lives in the PROJECT PROFILE (§0).
 

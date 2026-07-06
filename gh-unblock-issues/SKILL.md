@@ -1,5 +1,5 @@
 ---
-name: unblock-gh-issues
+name: gh-unblock-issues
 description: |
   Work an open GitHub-issue backlog for BLOCKERS, not fixes: find what is stopping
   each issue from being picked up, and drive the removable blockers to resolution.
@@ -16,12 +16,12 @@ description: |
   TRIGGER when the user wants to triage and UNBLOCK issues rather than fix them:
   says "unblock the issues" / "clear the blockers" / "get the issues ready to work"
   / "what's blocking the backlog" / "what order should I work these in", invokes
-  /unblock-gh-issues, or names this skill. For actually implementing the fixes,
+  /gh-unblock-issues, or names this skill. For actually implementing the fixes,
   hand the unblocked issues to whatever fix workflow the repo uses.
 argument-hint: "Optional: scope (an issue number or label filter) and/or priority hints (e.g. 'do #14 first', 'focus on the login flow'); default is all open issues, ordered by dependency leverage"
 ---
 
-# /unblock-gh-issues: Triage and Unblock a GitHub Issue Backlog
+# /gh-unblock-issues: Triage and Unblock a GitHub Issue Backlog
 
 Make the open backlog **workable**, in the order that unblocks the most. For each in-scope issue, decide whether something is stopping it from being picked up, and if that blocker is one you can remove by getting a decision from the user, remove it: ask, record the answer, clear the flag. Prioritize that work by dependency leverage so one answer frees the most downstream issues (§1.4). When everything in scope that can be unblocked has been, hand back a recommended dependency-ordered sequence for actually working the now-ready pool (§5). This skill does **not** fix code and does **not** touch any branch or working tree. It reads freely (issues, and repo files like docs when that answers a question instead of spending one on the user); the only things it *writes* are issue metadata — comments and labels. Working an issue once it is ready is a separate job for whatever fix workflow the repo uses.
 
