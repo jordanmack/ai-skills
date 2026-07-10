@@ -44,7 +44,7 @@ The agent reasons from what you wrote plus its own training knowledge, then retu
   Use an explicit `rm -rf "$CH"` after the run, **not** `trap '…' EXIT`: bash keeps only the last EXIT trap, so in a loop launching several runs only the final dir would be cleaned and earlier token copies would leak. (The window while codex holds the copied token is unavoidable; minimize it by deleting immediately after.)
   ⚠️ You **must** copy `config.toml` too — if your `auth.json` is for a custom provider configured there, a dir with only `auth.json` falls back to the real OpenAI endpoint and every call **401s** (empty output, the run fails — verified). With both files and no `AGENTS.md`, the global rules don't load (verified — the agent can't quote them). Caveat: this strips the global *rules* file but **not** codex's injected skills catalog (`<skills_instructions>` still loads) — cleaner, not pristine.
 - **claude** — `--bare` suppresses the global file (and hooks/LSP/plugin sync/prefetches), but needs `ANTHROPIC_API_KEY`, `apiKeyHelper` via `--settings`, or a 3P provider (Bedrock/Vertex/Foundry, which use their own creds); plain OAuth/keychain isn't read, so on a normal OAuth login `--bare` is unavailable and you'd move the global file instead.
-- **grok** — has the broadest ambient load, but two env toggles clear the part that biases a sealed opinion (verified): `GROK_CLAUDE_AGENTS_ENABLED=0` stops it applying the global `~/.claude/CLAUDE.md` rules — behaviorally confirmed with `grok-build`, the model the Mode A example uses (with it set, grok-build returns "no ambient rules" and can't quote them; `grok inspect` still *lists* the file with `disabled:true` but it isn't applied) — and `GROK_CLAUDE_HOOKS_ENABLED=0` drops user-level Claude hooks. Add `--no-memory` for cross-session memory. Caveat: this kills the *standing-rules* bias (the thing that matters for an independent opinion) but is **not** a full clean room — plugin-sourced skills/hooks under `~/.claude/plugins` still load (same "strips rules, not skills" limit as codex). So: `GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 grok --no-memory …` — no shared-state mutation needed.
+- **grok** — has the broadest ambient load, but two env toggles clear the part that biases a sealed opinion (verified): `GROK_CLAUDE_AGENTS_ENABLED=0` stops it applying the global `~/.claude/CLAUDE.md` rules — behaviorally confirmed with `grok-4.5`, the model the Mode A example uses (with it set, grok-4.5 returns "no ambient rules" and can't quote them; `grok inspect` still *lists* the file with `disabled:true` but it isn't applied) — and `GROK_CLAUDE_HOOKS_ENABLED=0` drops user-level Claude hooks. Add `--no-memory` for cross-session memory. Caveat: this kills the *standing-rules* bias (the thing that matters for an independent opinion) but is **not** a full clean room — plugin-sourced skills/hooks under `~/.claude/plugins` still load (same "strips rules, not skills" limit as codex). So: `GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 grok --no-memory …` — no shared-state mutation needed.
 
 Treat Mode A as "no *intended* FS/web access," not "zero ambient context." Use a clean-room path only when the ambient rules would genuinely bias the result; otherwise it's fine to let them load.
 
@@ -81,7 +81,7 @@ Each CLI realizes the three modes differently. Pick the row for your CLI, the co
 
 ⚠️ **`$PROMPT` in the examples below is not a bare question — it must be the fully-built prompt from the matching template in *Prompt templates*.** For Mode A that means the prompt **starts with the no-explore preamble**, which is the actual seal (verified: without it, codex/grok will `find`/grep the filesystem under `read-only` anyway). The flags alone don't seal Mode A; the preamble inside `$PROMPT` does. Build `$PROMPT` first, then run the command.
 
-⚠️ **Wrap EVERY CLI invocation in its own wall-clock `timeout <duration> <cli> …`. A per-call bound is mandatory, not just a generous overall one.** Any of these agents can hang forever (an MCP handshake stall, the codex stdin-hang below, a wedged network socket): the process stays alive at 0% CPU and never writes its `-o`/stdout file, so an unbounded wait turns a bounded call into an indefinite stall that looks identical to slow progress. `timeout` guarantees the call returns. Set the duration generously so a slow-but-working run is never killed: at least **30 minutes** by default, and **60 minutes** for anything significant (high reasoning effort, a large codebase, or a codex reviewer, which is particularly time-consuming at high effort). Do NOT use a short bound like `timeout 300` as the standing default; five minutes is an incident stopgap, not the rule, and would SIGTERM a legitimate codex-at-`xhigh` run mid-think. When you launch a **panel** of CLIs (a review roster), the wrapper goes on EACH one independently so a single hung reviewer dies on its own bound and the rest are unaffected. ⚠️ **A `timeout` kill exits non-zero (124). It is a FAILED run, exactly like an auth error, and must go through the exit-code gate below (retry once), NEVER be read as an empty or clean result.**
+⚠️ **Wrap EVERY CLI invocation in its own wall-clock `timeout <duration> <cli> …`. A per-call bound is mandatory, not just a generous overall one.** Any of these agents can hang forever (an MCP handshake stall, the codex stdin-hang below, a wedged network socket): the process stays alive at 0% CPU and never writes its `-o`/stdout file, so an unbounded wait turns a bounded call into an indefinite stall that looks identical to slow progress. `timeout` guarantees the call returns. Set the duration generously so a slow-but-working run is never killed: at least **30 minutes** by default, and **60 minutes** for anything significant (high reasoning effort, a large codebase, or a codex reviewer, which is particularly time-consuming at high effort). Do NOT use a short bound like `timeout 300` as the standing default; five minutes is an incident stopgap, not the rule, and would SIGTERM a legitimate codex-at-`ultra` run mid-think. When you launch a **panel** of CLIs (a review roster), the wrapper goes on EACH one independently so a single hung reviewer dies on its own bound and the rest are unaffected. ⚠️ **A `timeout` kill exits non-zero (124). It is a FAILED run, exactly like an auth error, and must go through the exit-code gate below (retry once), NEVER be read as an empty or clean result.**
 
 ⚠️ **Gate on the exit code, not the output file** — don't equate "file exists / is non-empty" with "got an answer." Auth failures, rate limits, "not logged in," and crashes all set a **non-zero exit code**, so `$? == 0` is the one reliable success check across all three CLIs. HTTP 502 may indicate an invalid or unavailable model; check the model name before treating it as a transient failure. Where the error *text* lands varies and is a trap: codex/grok write failures to **stderr** (so capture it — `2>/tmp/<cli>-err-$$.log` — not `/dev/null`, or a discarded stderr + empty stdout reads as a clean run); **claude writes errors like "Not logged in" to stdout**, so its output file is non-empty but holds an error, not a result — a naive non-empty check passes it. So: check `$? == 0` first; only then trust the output. Exit 0 is necessary but not sufficient — codex can exit 0 with an **empty or truncated** `-o` file (e.g. a sandbox-blocked run that finished), so also confirm the output is present and complete (not cut off mid-sentence). For review/adjudication loops this is critical — a failed run misread as "no findings" silently corrupts the result.
 
@@ -93,44 +93,48 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Primary (strongest) | Secondary | Flag form |
 |---|---|---|---|
-| codex | `gpt-5.5` | `gpt-5.4` | `--model <id>` |
-| grok | `grok-4-3` | `grok-composer-2.5-fast` | `--model <id>` |
+| codex | `gpt-5.6-sol` | `gpt-5.5` | `--model <id>` |
+| grok | `grok-4.5` | `grok-composer-2.5-fast` | `--model <id>` |
 | claude | `opus` (`claude-opus-4-8`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
 
 **Other tiers** — remaining models each CLI reports as available (name explicitly with `--model`; not defaults):
 
 | CLI | Model | Note |
 |---|---|---|
+| codex | `gpt-5.6-terra` | 5.6 frontier variant; supports `max` and `ultra`. |
+| codex | `gpt-5.6-luna` | 5.6 variant; supports up to `max`. |
+| codex | `gpt-5.4` | Previous generation; use when 5.5/5.6 is overkill. |
 | codex | `gpt-5.4-mini` | Smaller/cheaper 5.4; use for light tasks. |
-| grok | `grok-build` | Distinct model from grok-4-3 (not an alias); reasoning-capable. |
+| codex | `gpt-5.2` | Legacy; reach only if the operator names it. |
+| grok | `grok-4-3` | Prior flagship; reasoning-capable alternative when primary unavailable. Secondary stays composer (fast/cheap, not a reasoning fallback). |
 | claude | `fable` (`claude-fable-5`) | Most capable for hardest/longest tasks, but **most expensive** — kept out of primary/secondary for cost. Reach for it only when opus/sonnet fall short. |
-| claude | `haiku` (`claude-haiku-4-5`) | Fastest, for quick answers. |
+| claude | `haiku` (`claude-haiku-4-5-20251001`) | Fastest, for quick answers. |
 
-⚠️ **`grok-build` and `grok-4-3` are two distinct catalog entries, not a model-and-its-alias.** `grok models` lists both by name (alongside `grok-composer-2.5-fast`). Don't describe `grok-build` as "an alias of grok-4-3." Treat "Grok Build" the model as separate from any tool of a similar name.
+⚠️ **`grok-4.5` and `grok-4-3` are two distinct catalog entries, not a model-and-its-alias.** `grok models` lists both by name (alongside `grok-composer-2.5-fast`). Don't describe one as an alias of the other.
 
-**Reasoning-effort policy:** every external agent run must pass an explicit effort flag. If the operator specified a thinking / reasoning-effort level for this run, use that exact level. Otherwise use the highest supported level for the selected CLI/model. Never rely on CLI defaults or user config. This skill is the enforcement point for external spawns, including calls from **autonomous** and **adversarial-review**; caller-provided run context that explicitly names an effort level takes precedence over the highest-effort default. The exact flag and its full ladder per CLI (so you never look it up):
+**Reasoning-effort policy:** every external agent run must pass an explicit effort flag. If the operator specified a thinking / reasoning-effort level for this run, use that exact level **only when the selected model supports it** — if not, fail the run (non-zero exit / report to operator); do not silently clamp or downgrade. Otherwise use the highest supported level for the selected CLI/model (per the ladder above). Never rely on CLI defaults or user config. This skill is the enforcement point for external spawns, including calls from **autonomous** and **adversarial-review**; caller-provided run context that explicitly names an effort level takes precedence over the highest-effort default. The exact flag and its full ladder per CLI (so you never look it up):
 
-| CLI | Effort flag | Levels (low → high) | Highest |
+| CLI | Effort flag | Levels (low → high) | Highest (by model) |
 |---|---|---|---|
-| codex | `-c 'model_reasoning_effort="<level>"'` | `low, medium, high, xhigh` (pinned models; default `medium`) | **`xhigh`** (no `max`; `max` is rejected) |
+| codex | `-c 'model_reasoning_effort="<level>"'` | **5.6-sol / 5.6-terra:** `low, medium, high, xhigh, max, ultra` · **5.6-luna:** `low, medium, high, xhigh, max` · **5.5 / 5.4 / 5.4-mini / 5.2:** `low, medium, high, xhigh` | **`ultra`** on `gpt-5.6-sol`/`gpt-5.6-terra`; **`max`** on `gpt-5.6-luna`; **`xhigh`** on `gpt-5.5` and legacy 5.x |
 | grok | `--effort <level>` | `low, medium, high, xhigh, max` | **`max`** |
 | claude | `--effort <level>` | `low, medium, high, xhigh, max` | **`max`** |
 
-⚠️ **`grok-composer-2.5-fast` does not support reasoning effort at all** — the `--effort` flag is a no-op for it (it's a fast coding model, not a reasoning model). If the operator named an effort level, use `grok-build` instead unless the operator explicitly asked for composer. For reasoning-hard review work use `grok-build`; if composer is still selected, report that effort was not available.
+⚠️ **`grok-composer-2.5-fast` does not support reasoning effort at all** — the `--effort` flag is a no-op for it (it's a fast coding model, not a reasoning model). If the operator named an effort level, use `grok-4.5` instead unless the operator explicitly asked for composer. For reasoning-hard review work use `grok-4.5` (or `grok-4-3`); if composer is still selected, report that effort was not available.
 
 ### Attaching images / files (vision)
 
-All three CLIs are agentic and have a file-reading tool, and their pinned models are vision-capable (grok-4-3/grok-build, gpt-5.5, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
+All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.5, gpt-5.6-sol, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
 
 ```bash
-# Verified on grok (build + composer-2.5-fast); generalizes to codex/claude (both read files natively).
-GROK_CLAUDE_AGENTS_ENABLED=0 grok --no-memory --model grok-build --effort max --cwd /tmp/shots \
+# Pattern verified on grok composer; reasoning models (grok-4.5) expected to match — generalizes to codex/claude (both read files natively).
+GROK_CLAUDE_AGENTS_ENABLED=0 grok --no-memory --model grok-4.5 --effort max --cwd /tmp/shots \
   --single "Open /tmp/shots/a.png and /tmp/shots/b.png and review each for visual/UX issues." > "$OUT" 2>"$ERR"
 ```
 
 - **grok inline alternative (no file read):** `grok --prompt-json '<json>'` takes **ACP content blocks** — mix text and image blocks: `[{"type":"text","text":"…"},{"type":"image","data":"<RAW base64, no data: prefix>","mimeType":"image/png"}]`. Use this when the agent can't read the path (Mode A sealed) or you'd rather pass bytes inline. (A trivially tiny image — e.g. a 1×1 px — may be dismissed as "no image provided"; use a real screenshot.) `--prompt-file` is **text-only** — it does **not** carry images; use `--prompt-json` or the file-path method.
-- **Multi-image reliability:** `grok-build` reliably reviews several images in one call (verified 2, 3, 7). `grok-composer-2.5-fast` also has vision (verified), but for a real multi-image pass prefer `grok-build`. Note composer's answers can be terse (~80 bytes) yet complete — don't treat a short output as an error or gate a retry on length.
-- **Caveat — confident vision hallucinations:** vision output can invent details (a verified case: grok-build reported a duplicated-word typo in UI text that wasn't there). Treat pixel-level findings like any other model claim — **verify against the source/file** before acting (refute-before-accept).
+- **Multi-image reliability:** `grok-composer-2.5-fast` has vision (verified). Prior `grok-build` reliably reviewed several images in one call (verified 2, 3, 7); expect `grok-4.5` to behave similarly but reconfirm before relying on it. For a real multi-image pass prefer a reasoning model (`grok-4.5` or `grok-4-3`) over composer. Note composer's answers can be terse (~80 bytes) yet complete — don't treat a short output as an error or gate a retry on length.
+- **Caveat — confident vision hallucinations:** vision output can invent details (a verified case: a grok reasoning model reported a duplicated-word typo in UI text that wasn't there). Treat pixel-level findings like any other model claim — **verify against the source/file** before acting (refute-before-accept).
 
 ### codex (OpenAI)
 
@@ -156,8 +160,8 @@ codex exec … - < "$PROMPT_FILE"               # file redirect into the - senti
 ```bash
 # Mode A (sealed second opinion):
 printf '%s' "$PROMPT" | codex exec \
-  --model gpt-5.5 \
-  -c 'model_reasoning_effort="xhigh"' \
+  --model gpt-5.6-sol \
+  -c 'model_reasoning_effort="ultra"' \
   -c 'mcp_servers={}' \
   --sandbox read-only \
   --skip-git-repo-check \
@@ -174,12 +178,12 @@ printf '%s' "$PROMPT" | codex exec \
 # Mode C: swap --sandbox workspace-write; drop --skip-git-repo-check if operating in a repo; prompt defines the job.
 ```
 
-- **Model**: default `--model gpt-5.5` (strongest); secondary `--model gpt-5.4`. Always pin — defaults drift.
-- **Thinking**: default to `-c 'model_reasoning_effort="xhigh"'` (highest; no `max`). If the operator or calling skill explicitly named `low`, `medium`, `high`, or `xhigh` for this run, use that value instead. Never omit the setting.
+- **Model**: default `--model gpt-5.6-sol` (strongest); secondary `--model gpt-5.5`. Always pin — defaults drift.
+- **Thinking**: default to the highest level the selected model supports — `ultra` on `gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-5.6-luna`, `xhigh` on `gpt-5.5` and legacy 5.x. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it; otherwise fail and report. Never omit the setting.
 
 ### grok (xAI)
 
-No `exec` subcommand, no `-o` flag — use top-level `grok` and redirect **stdout only**. Send stderr to its own log, not `/dev/null` — it carries a benign "failed to watch root recursively" warning *but also* real auth/session failures, and a discarded stderr + empty stdout reads as a clean review when the run actually failed (see the run-safety note under *Per-CLI invocation*). Stdin sentinel is `--prompt-file /dev/stdin` — **passing bare `-` does NOT work** (grok treats `-` as a literal filename: `Failed to read '-'` on stderr, exit 1 — verified on 0.2.60). ⚠️ **`--prompt-file` silently middle-truncates a prompt over ~33 KB** — it injects a `…[middle truncated — full text in the offloaded file]…` marker and offloads the full text to a file (verified). `grok-build` reads the offload on its own and recovers; **`grok-composer-2.5-fast` under a no-explore preamble reviews the truncated view and claims a full sweep** — silently wrong. For sealed grok prompts over ~30 KB, add one narrow preamble exception: *"if the prompt shows a middle-truncation marker pointing to an offloaded file, read ONLY that file; nothing else."* grok is tool-eager — the no-explore preamble matters more here than elsewhere. No `--ephemeral`/`--skip-git-repo-check`; don't enable `--experimental-memory`.
+No `exec` subcommand, no `-o` flag — use top-level `grok` and redirect **stdout only**. Send stderr to its own log, not `/dev/null` — it carries a benign "failed to watch root recursively" warning *but also* real auth/session failures, and a discarded stderr + empty stdout reads as a clean review when the run actually failed (see the run-safety note under *Per-CLI invocation*). Stdin sentinel is `--prompt-file /dev/stdin` — **passing bare `-` does NOT work** (grok treats `-` as a literal filename: `Failed to read '-'` on stderr, exit 1 — verified on 0.2.60). ⚠️ **`--prompt-file` silently middle-truncates a prompt over ~33 KB** — it injects a `…[middle truncated — full text in the offloaded file]…` marker and offloads the full text to a file (verified). Prior `grok-build` read the offload on its own and recovered (verified); expect `grok-4.5`/`grok-4-3` to behave similarly but reconfirm before relying on it — **`grok-composer-2.5-fast` under a no-explore preamble reviews the truncated view and claims a full sweep** — silently wrong. For sealed grok prompts over ~30 KB, add one narrow preamble exception: *"if the prompt shows a middle-truncation marker pointing to an offloaded file, read ONLY that file; nothing else."* grok is tool-eager — the no-explore preamble matters more here than elsewhere. No `--ephemeral`/`--skip-git-repo-check`; don't enable `--experimental-memory`.
 
 ⚠️ **You MUST give grok a headless prompt flag — `-p`/`--single` or `--prompt-file`. The bare positional form `grok "$PROMPT"` launches the interactive TUI and dies silently when there is no TTY** (every orchestrator/CI shell): exit 1 (intermittently 0), **zero bytes on both stdout and stderr**, and `--debug-file` writes nothing because it aborts before log init (verified on 0.2.60). This is the #1 grok headless failure — and unlike codex it is **not** a stdin issue: `grok "$PROMPT" < /dev/null` still dies (verified). The safe forms (all exit 0 with output headless):
 ```bash
@@ -207,7 +211,7 @@ Symptom-to-cause: a grok run that produced **0 bytes on stdout AND stderr** (no 
 printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 grok \
   --prompt-file /dev/stdin \
   --cwd /tmp \
-  --model grok-build \
+  --model grok-4.5 \
   --effort max \
   --sandbox read-only \
   --disable-web-search \
@@ -219,8 +223,8 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Then Read /tmp/grok-out-$$.md
 ```
 
-- **Model**: primary `--model grok-4-3` (strongest); secondary `--model grok-composer-2.5-fast`; also available `--model grok-build`. `grok-build` and `grok-4-3` are **distinct catalog entries**, not an alias pair — `grok models` lists all three by name. Confirm the current set with `grok models`. ⚠️ composer ignores reasoning effort; use `grok-4-3` or `grok-build` for reasoning-hard work.
-- **Thinking**: default to `--effort max` (highest; verified to run on `grok-build`). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Prefer `--effort`; never omit it on effort-capable models. Note grok has a second, easily-confused flag, `--reasoning-effort`, whose value set differs (`none|minimal|low|medium|high|xhigh`, no `max`) — prefer `--effort`. For reasoning-hard work, prefer codex or claude regardless.
+- **Model**: primary `--model grok-4.5` (strongest); secondary `--model grok-composer-2.5-fast`; also available `--model grok-4-3`. `grok-4.5` and `grok-4-3` are **distinct catalog entries**, not an alias pair — `grok models` lists both by name. Confirm the current set with `grok models`. ⚠️ composer ignores reasoning effort; use `grok-4.5` or `grok-4-3` for reasoning-hard work.
+- **Thinking**: default to `--effort max` (highest; verified to run on `grok-4.5`). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Prefer `--effort`; never omit it on effort-capable models. Note grok has a second, easily-confused flag, `--reasoning-effort`, whose value set differs (`none|minimal|low|medium|high|xhigh`, no `max`) — prefer `--effort`. For reasoning-hard work, prefer codex or claude regardless.
 - **Subagents**: the Mode A example passes `--no-subagents` to stop fan-out. For **Mode C**, add it too unless you specifically want grok spawning subagents — they widen blast radius beyond what the prompt scopes.
 
 ### claude (Anthropic)
