@@ -176,12 +176,12 @@ pinchtab snap --max-tokens 2000 # token budget cap
 > ⚠️ **Quirk:** Use `snap`, not `snapshot`. The alias `snap` is the intended short form.
 
 ### `pinchtab set viewport <width> <height>`
-Set CSS layout viewport via CDP emulation on the current tab (or `--tab`). **Runtime** — not limited to browser/server startup; can change between navigations and screenshots.
+Emulate CSS viewport size on the current tab (or `--tab`) via CDP. Applies immediately — not limited to browser/server startup. Switch breakpoints mid-session without restart.
 
 ```bash
 pinchtab set viewport 1920 1080                 # desktop
 pinchtab set viewport 768 1024                  # tablet
-pinchtab set viewport 390 844 --mobile --dpr 3  # mobile
+pinchtab set viewport 390 844 --mobile --dpr 3  # phone
 pinchtab set viewport 1280 720 --tab <id>
 ```
 
@@ -190,11 +190,11 @@ pinchtab set viewport 1280 720 --tab <id>
 | `--dpr <n>` | Device pixel ratio (default 1.0) |
 | `--mobile` | Emulate mobile device metrics |
 | `--tab <id>` | Target a specific tab |
-| `--json` | Full JSON response (`status: applied`, width/height/dpr) |
+| `--json` | Full JSON (`status: applied`, width, height, dpr) |
 
 Related: `pinchtab set geo <lat> <lon>`, `pinchtab set media <feature> <value>`, `pinchtab set offline true|false`.
 
-> **Verified:** After `set viewport`, `window.innerWidth`/`innerHeight` match the requested size. Screenshots at `--dpr 1` match CSS size in PNG pixels; at `--dpr 3`, PNG is `width*dpr` × `height*dpr` (device pixels).
+Confirm with `window.innerWidth` / `innerHeight` (via `eval`). Screenshot PNG size = CSS size when `--dpr 1`; = `width*dpr` × `height*dpr` when dpr > 1.
 
 ### `pinchtab screenshot`
 Capture a screenshot of the current page.
@@ -210,7 +210,7 @@ pinchtab screenshot -o out.png --format png
 
 `--beyond-viewport` is ignored when `-s/--selector` is set — selectors already clip to an element.
 
-Bitmap size follows the **current emulated viewport and dpr** (see `set viewport` above). `--scale` rescales after capture; it does not change CSS layout.
+Bitmap size follows the current emulated viewport and dpr (see `set viewport`). `--scale` rescales after capture; it does not change CSS layout.
 
 ### `pinchtab record`
 Record browser activity as a video file.

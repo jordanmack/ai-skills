@@ -240,21 +240,21 @@ Timeout 10s default, 30s max via `--timeout <ms>`. All non-`ms` wait modes poll 
 
 ### Viewport / device emulation
 
-Runtime CDP emulation on the current tab (or `--tab`). **Not startup-only** — call after `nav`, mid-flow, or between screenshots.
+`pinchtab set viewport` applies CDP device metrics to the **live tab** (or `--tab`). Change it anytime after `nav` — no server/browser restart. Emulates CSS layout size; headed OS window chrome may not match.
 
 ```bash
-pinchtab set viewport <width> <height>              # CSS layout size; flags: --dpr <n>, --mobile, --tab <id>, --json
+pinchtab set viewport <width> <height>              # flags: --dpr <n> (default 1), --mobile, --tab <id>, --json
 pinchtab set viewport 1920 1080                     # desktop
 pinchtab set viewport 768 1024                      # tablet
-pinchtab set viewport 390 844 --mobile --dpr 3      # mobile (CSS 390×844; devicePixelRatio 3)
-pinchtab set geo <lat> <lon> [--accuracy <m>]       # geolocation
-pinchtab set media <feature> <value>                # e.g. prefers-color-scheme dark
-pinchtab set offline true|false                     # network offline emulation
+pinchtab set viewport 390 844 --mobile --dpr 3      # phone (CSS 390×844, devicePixelRatio 3)
+pinchtab set geo <lat> <lon> [--accuracy <m>]
+pinchtab set media prefers-color-scheme dark        # or other media features
+pinchtab set offline true|false
 ```
 
-Verify with `pinchtab eval '(() => ({ w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio }))()'`.
+Check: `pinchtab eval '(() => ({ w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio }))()'`.
 
-**Screenshot pixel size vs CSS viewport (verified):** at `--dpr 1` (default), `screenshot` PNG dimensions match CSS `innerWidth×innerHeight` (e.g. 1920×1080, 768×1024). With `--dpr 3`, the bitmap is **device pixels** (`width*dpr` × `height*dpr`, e.g. 390×844 → 1170×2532). Do not expect screenshot file size to equal the CSS viewport when dpr ≠ 1. `--scale` on `screenshot` further rescales the bitmap after capture.
+Screenshot bitmaps: at default `--dpr 1`, PNG pixels equal CSS size (1920×1080 → 1920×1080). At `--dpr 3`, PNG is device pixels (`W*dpr` × `H*dpr`, e.g. 390×844 → 1170×2532). Prefer `--dpr 1` for 1:1 visual QA; use high dpr when testing retina/mobile paint. `screenshot --scale` rescales after capture and does not change layout.
 
 ### Export, debug, verification
 
@@ -295,6 +295,7 @@ Use curl only when the CLI is unavailable. See [api.md](./references/api.md) for
 - **Form**: `nav --snap` → `fill <ref> <text> --snap-diff` per field → `click --wait-nav --snap-diff` submit → verify with `text`. Always click submit; never `press Enter`.
 - **Multi-step**: use `click --snap-diff` to get only changed refs with each action — most token-efficient for flows with many steps.
 - **Direct selectors**: skip the snapshot when structure is known — `click "text:Accept"`, `fill "#search" "q"`.
+- **Responsive check**: `set viewport` for each breakpoint → `snap`/`text` (or `screenshot -o …`) → next breakpoint. No restart between sizes.
 
 ## Verification & Gotchas
 
@@ -308,9 +309,7 @@ Use curl only when the CLI is unavailable. See [api.md](./references/api.md) for
 - `text:<value>` selectors use JS-level search and can flake with `DOM Error` / `context deadline exceeded` on large pages. Prefer refs from a fresh `snap -i -c` — they resolve by backend node IDs.
 - `snap -i -c` skips non-interactive descendants. For iframe interiors set a frame scope or use full `snap`.
 - `aria-expanded` is usually on the **outer container** of accordions/menus, not the click trigger. Verify via the wrapper's attribute.
-- **Viewport is runtime, not startup-only:** `pinchtab set viewport W H` applies CDP device metrics to the live tab immediately. Re-set whenever you need a different breakpoint; no browser restart required. Headed OS window chrome may not match the emulated CSS size — trust `window.innerWidth`/`innerHeight` and screenshot pixel dims.
-- **High-DPR screenshots are larger than the CSS viewport:** `set viewport 390 844 --dpr 3` then `screenshot -o out.png` yields ~1170×2532 pixels, not 390×844. Use `--dpr 1` (or omit) when you want 1:1 CSS-to-PNG sizing for visual QA.
-
+- High-DPR screenshots are larger than the CSS viewport (`set viewport 390 844 --dpr 3` → PNG ~1170×2532). For 1:1 CSS-to-PNG QA, omit `--dpr` or use `--dpr 1`.
 
 ## References
 
