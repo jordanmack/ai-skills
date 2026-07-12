@@ -1,6 +1,17 @@
 ---
 name: pinchtab
-description: "Use this skill when a task needs browser automation through PinchTab: open a website, inspect interactive elements, click through flows, fill out forms, scrape page text, reuse a dedicated automation profile with user approval, export screenshots or PDFs, manage multiple browser instances, or fall back to the HTTP API when the CLI is unavailable. Prefer this skill for token-efficient browser work driven by stable accessibility refs such as `e5` and `e12`."
+description: |
+  Drive a real browser through the PinchTab CLI for token-efficient
+  automation, acting on stable accessibility refs such as `e5` and `e12`
+  instead of screenshots.
+  TRIGGER when a task needs: (1) opening a website and navigating or
+  inspecting its interactive elements, (2) clicking through flows,
+  (3) filling and submitting forms, (4) scraping page text, (5) exporting
+  screenshots, recordings, or PDFs, (6) reusing a dedicated automation
+  profile or authenticated session with user approval, (7) viewport or
+  device emulation for responsive checks, (8) managing multiple browser
+  instances, (9) PinchTab over MCP or the HTTP API fallback when the CLI
+  is unavailable, or (10) any other browser automation via PinchTab.
 metadata:
   openclaw:
     requires:
