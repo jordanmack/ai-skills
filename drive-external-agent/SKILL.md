@@ -91,7 +91,7 @@ Each CLI realizes the three modes differently. Pick the row for your CLI, the co
 
 Each CLI pins a **primary** (strongest) and a **secondary**, so you can name either without a lookup; naming a CLI bare (just "codex"/"grok"/"claude") means **its primary**. Beyond those, the *Other tiers* table lists every remaining model the CLI itself reports, for when the operator asks for one by name. There is no "run all the models" shorthand; to review with several models, list them explicitly as a roster (that's the job of the **adversarial-review** skill, which calls this one per model). Flag form is `--model <id>` for all three (claude also accepts an alias). Model lists drift — reconfirm with `grok models`, `codex debug models` (JSON catalog), or claude's `/model` picker (claude has no headless list command).
 
-| CLI | Primary (strongest) | Secondary | Flag form |
+| CLI | Primary | Secondary | Flag form |
 |---|---|---|---|
 | codex | `gpt-5.6-terra` | `gpt-5.5` | `--model <id>` |
 | grok | `grok-4.5` | `grok-composer-2.5-fast` | `--model <id>` |
