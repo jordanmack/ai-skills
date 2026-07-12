@@ -93,7 +93,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Primary (strongest) | Secondary | Flag form |
 |---|---|---|---|
-| codex | `gpt-5.6-sol` | `gpt-5.5` | `--model <id>` |
+| codex | `gpt-5.6-terra` | `gpt-5.5` | `--model <id>` |
 | grok | `grok-4.5` | `grok-composer-2.5-fast` | `--model <id>` |
 | claude | `opus` (`claude-opus-4-8`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
 
@@ -101,7 +101,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Model | Note |
 |---|---|---|
-| codex | `gpt-5.6-terra` | 5.6 frontier variant; supports `max` and `ultra`. |
+| codex | `gpt-5.6-sol` | 5.6 frontier variant; supports `max` and `ultra`. |
 | codex | `gpt-5.6-luna` | 5.6 variant; supports up to `max`. |
 | codex | `gpt-5.4` | Previous generation; use when 5.5/5.6 is overkill. |
 | codex | `gpt-5.4-mini` | Smaller/cheaper 5.4; use for light tasks. |
@@ -116,7 +116,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Effort flag | Levels (low → high) | Highest (by model) |
 |---|---|---|---|
-| codex | `-c 'model_reasoning_effort="<level>"'` | **5.6-sol / 5.6-terra:** `low, medium, high, xhigh, max, ultra` · **5.6-luna:** `low, medium, high, xhigh, max` · **5.5 / 5.4 / 5.4-mini / 5.2:** `low, medium, high, xhigh` | **`ultra`** on `gpt-5.6-sol`/`gpt-5.6-terra`; **`max`** on `gpt-5.6-luna`; **`xhigh`** on `gpt-5.5` and legacy 5.x |
+| codex | `-c 'model_reasoning_effort="<level>"'` | **5.6-terra / 5.6-sol:** `low, medium, high, xhigh, max, ultra` · **5.6-luna:** `low, medium, high, xhigh, max` · **5.5 / 5.4 / 5.4-mini / 5.2:** `low, medium, high, xhigh` | **`ultra`** on `gpt-5.6-terra`/`gpt-5.6-sol`; **`max`** on `gpt-5.6-luna`; **`xhigh`** on `gpt-5.5` and legacy 5.x |
 | grok | `--effort <level>` | `low, medium, high, xhigh, max` | **`max`** |
 | claude | `--effort <level>` | `low, medium, high, xhigh, max` | **`max`** |
 
@@ -124,7 +124,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 ### Attaching images / files (vision)
 
-All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.5, gpt-5.6-sol, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
+All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.5, gpt-5.6-terra, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
 
 ```bash
 # Pattern verified on grok composer; reasoning models (grok-4.5) expected to match — generalizes to codex/claude (both read files natively).
@@ -160,7 +160,7 @@ codex exec … - < "$PROMPT_FILE"               # file redirect into the - senti
 ```bash
 # Mode A (sealed second opinion):
 printf '%s' "$PROMPT" | codex exec \
-  --model gpt-5.6-sol \
+  --model gpt-5.6-terra \
   -c 'model_reasoning_effort="ultra"' \
   -c 'mcp_servers={}' \
   --sandbox read-only \
@@ -178,8 +178,8 @@ printf '%s' "$PROMPT" | codex exec \
 # Mode C: swap --sandbox workspace-write; drop --skip-git-repo-check if operating in a repo; prompt defines the job.
 ```
 
-- **Model**: default `--model gpt-5.6-sol` (strongest); secondary `--model gpt-5.5`. Always pin — defaults drift.
-- **Thinking**: default to the highest level the selected model supports — `ultra` on `gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-5.6-luna`, `xhigh` on `gpt-5.5` and legacy 5.x. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it; otherwise fail and report. Never omit the setting.
+- **Model**: default `--model gpt-5.6-terra` (strongest); secondary `--model gpt-5.5`. Always pin — defaults drift.
+- **Thinking**: default to the highest level the selected model supports — `ultra` on `gpt-5.6-terra`/`gpt-5.6-sol`, `max` on `gpt-5.6-luna`, `xhigh` on `gpt-5.5` and legacy 5.x. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it; otherwise fail and report. Never omit the setting.
 
 ### grok (xAI)
 
