@@ -2,9 +2,10 @@
 name: gh-unblock-issues
 description: |
   Work an open GitHub-issue backlog to UNBLOCK it for the fix pass: clear product/info
-  gaps (one simplified non-technical question at a time), and when the repo uses an
-  approval gate authorize as many implementable issues as the operator allows (open +
-  not approved + not deferred). Skips formally deferred issues by default. Toggles
+  gaps (brief before ask; one simplified non-technical root question at a time), and
+  when the repo uses an approval gate authorize as many implementable issues as the
+  operator allows with a ships/risk/tier brief (open + not approved + not deferred).
+  Skips formally deferred issues by default. Toggles
   needs-info (cleared = not waiting on info; present = still blocked on input) and,
   when the gate is present, approved / known-open / deferred per the authorize path.
   Hard blockers (waiting on another issue, external/backend, real outside gap) are
@@ -42,10 +43,16 @@ Detect the gate once at start (`gh label list` and/or repo `docs/github-issues.m
 
 When the gate is absent, only `needs-info` is load-bearing.
 
-**Interaction style.** Questions to the user are **one at a time**, live, waiting for the answer before the next (the bulk authorize question is one question covering a set of issue numbers). Each product question is:
-- **Simplified to the root decision** — the one fork everything else hangs on.
-- **Non-technical** — product/experience language, no jargon or file names.
-- **Concise** — one or two sentences of context, then the question; recommend a default when you have one.
+**Interaction style — brief before ask (hard rule).** Never fire a product or authorize question without the brief immediately above it. Order is always **brief → question → wait**. Asking first and briefing second is a skill failure: it forces the operator to guess or refuse.
+
+Questions are **one at a time**, live, waiting for the answer before the next (bulk authorize is still one question covering a set). **Concise** means a short *question*; the brief may be a few plain sentences or bullets so the fork is the only hard part left.
+
+Each **product** question must:
+- **Lead with a product brief** covering: who is affected, what breaks today, what each option does, cost/risk of each path, and a recommended default.
+- Then state the **single root decision** (the one fork everything else hangs on).
+- Stay **non-technical** — product/experience language; no jargon-only forks (e.g. bare "validate-vs-docs") without the plain brief that explains them.
+
+Each **authorize** question must lead with an authorize brief (§2B): per issue what ships, risk, work tier/theme; plus an optional one-line set summary. Ban empty prompts: issue numbers + one-liners only are not enough.
 
 If a question can be answered by reading the codebase or the issue thread, read — never spend a user question on something you can look up. Normalize trusted approval/deferral already in a body or comment into labels when the gate is present (add `approved` and clear parking, or ensure `deferred` on parking) without re-asking.
 
@@ -93,8 +100,8 @@ Work the task list in priority order, one `ask` / `already-answered` at a time. 
 
 **Ask path (`ask`).**
 1. Confirm you cannot answer from the repo/thread; else reclassify to `already-answered` and resolve.
-2. Reduce to the root decision; draft per interaction style.
-3. Ask the user — one question, then wait. Do not batch with other issues' product questions.
+2. Reduce to the root decision. Draft the **product brief** first (who / what breaks / each option / cost-risk / recommended default), then the one fork — never the reverse.
+3. Present brief, then ask — one question, then wait. Do not batch with other issues' product questions. Do not send a multiple-choice shell with no brief.
 4. Apply (§2A): comment the decision; clear `needs-info` only if no open depends-on and no residual hard-blocker remain; else keep `needs-info` and re-bucket.
 
 If the user cannot answer now, keep/add `needs-info`, note still-waiting, move on. Never stall the whole pass on one unanswered question.
@@ -131,7 +138,14 @@ Run **after** §2 info work, only if the approval gate is present.
 
 Also include issues that already carry trusted approval prose in body/comment but lack the label: **normalize** without asking (add `approved`, remove `known-open` and `deferred` if present, short comment).
 
-**Ask once** (single bulk question), e.g. "Authorize these N issues for the fix pass? (list numbers + one-line each). Recommended: yes to all." Allow all / subset / none.
+**Authorize brief (required before the question).** For each issue in the pool, one judgeable line covering:
+- **what ships** (plain outcome, not a ticket title only),
+- **risk** (low / medium / high, and why in a few words),
+- **work tier/theme** (e.g. docs, comments, UI polish, code fix, multi-module).
+
+Optional: one set-level line ("all residual cleanup; no new product surface"). Ban `#N — title only` or numbers-only lists.
+
+**Ask once** (single bulk question) after the brief: "Authorize these N issues for the fix pass?" Options: all / subset (list numbers) / none. Recommend a default when appropriate.
 
 **On yes (per issue authorized):**
 ```
@@ -171,6 +185,7 @@ Durable state is on GitHub (comments + labels). Optional local orchestration not
 
 When classification, §2, and §2B (if gated) are done, surface ONE report and STOP:
 
+- **Briefing self-check** — if any product or authorize question this run was sent without the required brief (product: who/breaks/options/cost/default; authorize: ships/risk/tier per issue), say so in one line as a skill failure; otherwise omit or mark clean.
 - **Unblocked this run** — info resolved and/or authorized this run; only list as pickable if they meet the **repo Ready predicate**.
 - **Handoff incomplete** — failed gated writes; note falsely pickable risk vs safely blocked.
 - **Authorized this run** — (gate only) issues that received `approved` (or were normalized).
