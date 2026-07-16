@@ -138,7 +138,9 @@ Consensus requires a **serious-fix-free** clean round: if you applied any *serio
 
 ⚠️ **Re-open only on a genuine change — don't ping-pong.** Re-validation may re-open an entry only when the artifact *or* the external state its rationale rested on has **actually changed** since you last adjudicated it — a borderline entry re-opened on unchanged evidence oscillates forever. Once you re-dispatch a re-opened entry and *re-confirm* the dismissal, that dismissal is **sticky**: record the re-confirmation, and don't re-open it again unless the underlying state changes anew. **One exception:** a rationale you recognize as *demonstrably mistaken* (an actual error in the reasoning, not "I'm no longer sure") must be re-opened and corrected — a known-bad dismissal is never frozen by stickiness.
 
-- **Serious** = correctness, security, data loss, architectural flaws, broken requirements — anything that changes whether the work is right.
+**Simplicity is a requirement, and complexity must earn its place.** A finding that adds mechanism — durability, validation, hard enforcement, abstraction — is real only if the failure it prevents is both likely and costly in actual operation; "rare and tolerable" means the simple version stands. Prefer advising the operator over restricting them, and flag unjustified complexity as a defect in its own right.
+
+- **Serious** = correctness, security, data loss, architectural flaws, unjustified complexity, broken requirements — anything that changes whether the work is right.
 - **Trivial** = nits, style, wording, micro-optimizations, preference. These never block exit.
 
 ## Final report
