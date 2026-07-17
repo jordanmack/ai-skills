@@ -165,7 +165,7 @@ Re-fetch before clearing `needs-info`; if a new blocker appeared, abort the clea
 
 **Add `needs-info`** (ask classify, hard-blocked, moot, user defer, operator rebucket from §2):
 ```
-gh label create needs-info --description "Blocked on user or external input" 2>/dev/null || true
+gh label create needs-info --description "Blocked on operator or external input" 2>/dev/null || true
 gh issue edit <N> --add-label needs-info   # if fails → Handoff incomplete (may look falsely pickable under no-gate, or still unapproved under gate)
 BODY=$(mktemp)
 # write: Needs user input: … / Hard-blocked: … / Superseded: …
