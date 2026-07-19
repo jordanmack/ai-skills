@@ -48,7 +48,7 @@ When the gate is absent, only `needs-info` is load-bearing.
 
 **Interaction style - brief before ask (hard rule).** Never fire a product or authorize question without the brief immediately above it. Order is always **brief → question → wait**. Asking first and briefing second is a skill failure: it forces the operator to guess or refuse.
 
-Questions are **one at a time**, live, waiting for the answer before the next (bulk authorize is still one question covering a set). **Concise** means a short *question*; the brief may be a few plain sentences or bullets so the fork is the only hard part left.
+Questions are **one at a time**, live, waiting for the answer before the next (bulk authorize is still one question covering a set). Every question in the cycle carries a **progress marker** - `Question k of N` - where N is the current ask work-list total, so the operator can see progress; recompute N when rebuckets, reclassifications, or prereq skips change the list. **Concise** means a short *question*; the brief may be a few plain sentences or bullets so the fork is the only hard part left.
 
 Each **product** question must:
 - **Lead with a product brief** covering: who is affected, what breaks today, what each option does, cost/risk of each path, and a recommended default.
@@ -148,7 +148,7 @@ Run **after** §2 (or immediately after §1 when there is no approval gate). Wor
 **Ask path (`ask`).**
 1. Confirm you cannot answer from the repo/thread; else reclassify to `already-answered` and resolve.
 2. Reduce to the root decision. Draft the **product brief** first (who / what breaks / each option / cost-risk / recommended default), then the one fork - never the reverse.
-3. Present brief, then ask - one question, then wait. Do not batch with other issues' product questions. Do not send a multiple-choice shell with no brief.
+3. Present brief, then ask - one question with its `Question k of N` progress marker, then wait. Do not batch with other issues' product questions. Do not send a multiple-choice shell with no brief.
 4. Apply (§3A): comment the decision; clear `needs-info` only if no open depends-on and no residual hard-blocker remain; else keep `needs-info` and re-bucket.
 
 If the user cannot answer now, keep/add `needs-info`, note still-waiting, move on. Never stall the whole pass on one unanswered question.
