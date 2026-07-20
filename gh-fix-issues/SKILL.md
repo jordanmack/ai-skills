@@ -105,13 +105,13 @@ The profile is ONE Markdown block of named subsections carrying every project-sp
 
 ## 2. Per-Group Loop (Worktree Lifecycle With Auto-Cleanup)
 
-Work unit = **group** (one or more issues): one worktree, one driver, one end-of-group review, then merge/cleanup. Main creates the worktree, spawns the driver, acts on its one-line return (master-side plumbing only). For each actionable group **G** with issues `N1, N2, …` (solo: just `N`):
+Work unit = **group** (one or more issues): one worktree, one **driver subagent**, one end-of-group review, then merge/cleanup. Every group runs in its own driver — never in the main session. Independent groups **may run in parallel** (multiple driver subagents at once); serialize only when triage refs require a prereq group's merge first. Main creates worktrees, spawns drivers, and acts on each one-line return (master-side plumbing only; **FF-merge to main stays serialized** even when drivers run in parallel). For each actionable group **G** with issues `N1, N2, …` (solo: just `N`):
 
 1. **Create a throwaway worktree off the main branch** (outside the main checkout; worktree root and main-branch name per Profile: identity). Use the first issue id in the group for path/branch names:
    ```
    git worktree add <worktree-root>/issue-N1 -b fix/issue-N1-<slug> <main-branch>
    ```
-2. **Spawn the driver subagent** for group G (§2A), pointed at that worktree. A subagent can load a *named* skill on its own (that is how it will reach `/drive-external-agent` later), but it cannot dereference a "§2A"/"§2B" pointer into THIS file — so relay the actual text of those sections. Hand it: the driver brief (§2A's steps, plus §2B's text for it to pass to its own child), the safety rules (§3), the FULL project-profile block (§0's relay rule), the **ordered issue list** for the group, the worktree path, its scratch dir `<scratch>/issue-N1/` (group-scoped), each issue's triage row (verdict + reason + refs — `resume-partial` notes are starting points), any operator review-policy/cap overrides, and its return contract. The driver reads the issues and classifies group difficulty; do NOT pre-classify. Then wait for its one-line return. Do NOT read the diff, the files, the gate output, or the review findings — the driver owns all of that.
+2. **Spawn a driver subagent** for group G (§2A), pointed at that worktree (required — never implement in main). Relay §2A/§2B text plus the FULL profile (§0), safety (§3), ordered issue list, worktree path, scratch `<scratch>/issue-N1/`, triage rows, review overrides, and return contract. Do NOT pre-classify. You may spawn other independent groups' drivers without waiting; collect each one-line return when ready. Do NOT read the diff, files, gate output, or review findings.
 3. **Act on the driver's return** (a single status line). Only `clean` runs steps 4-7 in full (merge, post-merge steps, close, follow-ups); `blocked`/`failed`/`moot` each do their own disposition below and then skip straight to the next group (step 8):
    - `clean: <commit-hash>` → the driver committed and verified in its worktree branch (one hash for the group, covering all issues it fixed). Proceed to merge (step 4).
    - `blocked: <reason>` → nothing to merge. Handle per **Blocked mid-work** below (which includes cleanup), then continue to the next group.
@@ -130,7 +130,7 @@ Work unit = **group** (one or more issues): one worktree, one driver, one end-of
 
    **Blocked mid-work / needs operator input.** A `blocked: <reason>` return means a human blocker (decision, missing info, external dep, or review `abort-unsound`). Do NOT stall: comment on the blocking issue (and briefly note other open group issues) with blocker + progress so far; apply `needs-info` on the blocking issue (`gh label create needs-info --description "Blocked on operator or external input" 2>/dev/null; gh issue edit N --add-label needs-info`); leave OPEN; **discard the worktree** (step 4 cleanup, `--force`; no merge). Future triage (§1) resumes when answered.
 7. **File follow-ups** for lasting work in the driver's follow-up bullets (deferred non-fix, out-of-scope, test-infra, non-serious review leftovers) as `known-open` issues (`gh label create known-open --description "Known open follow-up" 2>/dev/null`). A degraded-panel (`n/m`) bullet goes only to the §5 report, not a filed issue.
-8. Mark the group complete, then the next group from the work-list (§1.4), **in order**. Never start a dependent group before its prereq group's merge when triage refs require it.
+8. Mark the group complete. Start any remaining ready groups (parallel when independent). Never start a dependent group before its prereq group's merge when triage refs require it.
 
 ### 2A. The Driver Subagent (owns everything inside one group, including the commit)
 
