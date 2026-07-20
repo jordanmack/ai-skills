@@ -18,7 +18,7 @@ argument-hint: "Optional: scope — label, issue list (#12, 15 or 12 15), and/or
 
 Drive the in-scope open GitHub-issue backlog to done by **group** (one worktree + one end-of-group review each), then stop and report (§5). Run under Autonomous Mode; workflow here, project facts in the PROJECT PROFILE (§0).
 
-**Run parameters** (settle up front; ask once only if genuinely open): **scope** per **Scope forms** below; **profile** from wrapper or §0 fallback; **review** caps and policy per §2A (operator overrides forwarded to the driver); **delivery** branch-per-group, FF-merged, issues closed as you go.
+**Run parameters** (settle up front; ask once only if genuinely open): **scope** per **Scope forms** below; **profile** from wrapper or §0 fallback; **review** caps and policy per §2A (operator overrides forwarded to the driver); **parallelism** cap on concurrent group drivers, default 5 (§2), operator-overridable; **delivery** branch-per-group, FF-merged, issues closed as you go.
 
 **Scope forms** (all valid; combine only when unambiguous):
 - **Default** — no issue/label/group token: all open issues; each actionable issue is a solo group after triage.
@@ -105,13 +105,13 @@ The profile is ONE Markdown block of named subsections carrying every project-sp
 
 ## 2. Per-Group Loop (Worktree Lifecycle With Auto-Cleanup)
 
-Work unit = **group** (one or more issues): one worktree, one **driver subagent**, one end-of-group review, then merge/cleanup. Every group runs in its own driver — never in the main session. Independent groups **run in parallel** (multiple driver subagents at once) — spawning them one at a time and waiting wastes the run; serialize only when triage refs require a prereq group's merge first. Main creates worktrees, spawns drivers, and acts on each one-line return (master-side plumbing only; **FF-merge to main stays serialized** even when drivers run in parallel). For each actionable group **G** with issues `N1, N2, …` (solo: just `N`):
+Work unit = **group** (one or more issues): one worktree, one **driver subagent**, one end-of-group review, then merge/cleanup. Every group runs in its own driver — never in the main session. Independent groups **run in parallel** (multiple driver subagents at once) — spawning them one at a time and waiting wastes the run; serialize only when triage refs require a prereq group's merge first. **Default parallelism cap: 5 concurrent drivers** unless the operator specifies a different cap; groups beyond the cap wait, and each driver return frees a slot for the next ready group. Main creates worktrees, spawns drivers, and acts on each one-line return (master-side plumbing only; **FF-merge to main stays serialized** even when drivers run in parallel). For each actionable group **G** with issues `N1, N2, …` (solo: just `N`):
 
 1. **Create a throwaway worktree off the main branch** (outside the main checkout; worktree root and main-branch name per Profile: identity). Use the first issue id in the group for path/branch names:
    ```
    git worktree add <worktree-root>/issue-N1 -b fix/issue-N1-<slug> <main-branch>
    ```
-2. **Spawn a driver subagent** for group G (§2A), pointed at that worktree (required — never implement in main). Relay §2A/§2B text plus the FULL profile (§0), safety (§3), ordered issue list, worktree path, scratch `<scratch>/issue-N1/`, triage rows, review overrides, and return contract. Do NOT pre-classify. Spawn every other independent group's driver without waiting on this one (create its worktree, then its driver); collect each one-line return when ready. Do NOT read the diff, files, gate output, or review findings.
+2. **Spawn a driver subagent** for group G (§2A), pointed at that worktree (required — never implement in main). Relay §2A/§2B text plus the FULL profile (§0), safety (§3), ordered issue list, worktree path, scratch `<scratch>/issue-N1/`, triage rows, review overrides, and return contract. Do NOT pre-classify. Spawn every other independent group's driver without waiting on this one (create its worktree, then its driver), up to the parallelism cap (§2 intro; default 5); collect each one-line return when ready. Do NOT read the diff, files, gate output, or review findings.
 3. **Act on the driver's return** (a single status line). Only `clean` runs steps 4-7 in full (merge, post-merge steps, close, follow-ups); `blocked`/`failed`/`moot` each do their own disposition below and then skip straight to the next group (step 8):
    - `clean: <commit-hash>` → the driver committed and verified in its worktree branch (one hash for the group, covering all issues it fixed). Proceed to merge (step 4).
    - `blocked: <reason>` → nothing to merge. Handle per **Blocked mid-work** below (which includes cleanup), then continue to the next group.
@@ -130,7 +130,7 @@ Work unit = **group** (one or more issues): one worktree, one **driver subagent*
 
    **Blocked mid-work / needs operator input.** A `blocked: <reason>` return means a human blocker (decision, missing info, external dep, or review `abort-unsound`). Do NOT stall: comment on the blocking issue (and briefly note other open group issues) with blocker + progress so far; apply `needs-info` on the blocking issue (`gh label create needs-info --description "Blocked on operator or external input" 2>/dev/null; gh issue edit N --add-label needs-info`); leave OPEN; **discard the worktree** (step 4 cleanup, `--force`; no merge). Future triage (§1) resumes when answered.
 7. **File follow-ups** for lasting work in the driver's follow-up bullets (deferred non-fix, out-of-scope, test-infra, non-serious review leftovers) as `known-open` issues (`gh label create known-open --description "Known open follow-up" 2>/dev/null`). A degraded-panel (`n/m`) bullet goes only to the §5 report, not a filed issue.
-8. Mark the group complete. Start ALL remaining ready groups now, in parallel — do not work them one at a time. Never start a dependent group before its prereq group's merge when triage refs require it.
+8. Mark the group complete. Start ALL remaining ready groups now, in parallel up to the cap (default 5) — do not work them one at a time. Never start a dependent group before its prereq group's merge when triage refs require it.
 
 ### 2A. The Driver Subagent (owns everything inside one group, including the commit)
 
