@@ -71,11 +71,11 @@ Authorize questions use the §2 table (required brief). If a question can be ans
    ```
    (`--limit 1000` covers any realistic backlog; if the returned count equals the limit, note **Scan truncated** under Needs attention in §7.)
 2. **Skip `deferred` by default.** Any issue carrying `deferred` is out of the work-list (no ask, no authorize) unless the operator args explicitly include it (e.g. "include deferred" or a single-issue pin of a deferred issue).
-3. **Read each remaining candidate** - body and ALL comments:
+3. **Read each remaining candidate** - body and ALL comments - in the main session (no subagents). One bulk call fetches the whole backlog with threads:
    ```
-   gh issue view <N> --json title,body,comments,labels
+   gh issue list --state open --limit 1000 --json number,title,labels,body,comments
    ```
-   For a large backlog, delegate to ONE subagent that returns a compact table (below). For a handful, read directly.
+   (single-issue pin: `gh issue view <N> --json title,body,comments,labels`). Keep the full threads in context: §2 (ships/risk/tier), §3 (product briefs), and §4 (grouping/effort) all reuse them, and summarizing loses exactly the material the briefs need.
 4. **Classify each issue** into exactly one bucket (on mixed/stale signals, highest wins: `hard-blocked` > `moot` > `already-answered` > `ask` > `ready`).
    - **`ready`** - implementable as-is (no product/info gap, no hard-blocker). Clear stale `needs-info` via §3A if present with no remaining blocker. When the approval gate is present and the issue lacks `approved`, it is ready-to-implement but **not yet pickable** until §2 authorizes it.
    - **`ask`** - blocked only by a missing decision or information the USER can supply. Capture the single root question. Ensure `needs-info` is present (§3A add path).
@@ -85,7 +85,7 @@ Authorize questions use the §2 table (required brief). If a question can be ans
 
    **Capture dependency edges** ("blocked by #X", "needs #Y first", etc.) even for ready/hard-blocked. For any depends-on number not in the open in-scope list, `gh issue view` it once for open vs closed (and close reason) before treating the edge as resolved.
 
-   Subagent row format: `| # | bucket | root question or blocker (one line) | depends-on |`. Evidence for later comments must be inline in the row.
+   Track per issue: bucket, root question or blocker (one line), depends-on edges, and the evidence pointer for any later comment.
 5. **Prioritize by dependency leverage** the `ask` / `already-answered` work-list:
    - Prerequisites before dependents always; if A is hard-blocked, skip asking B that waits on A.
    - Then highest transitive fan-out; tie-break lowest number.
