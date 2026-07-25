@@ -65,7 +65,7 @@ The profile is ONE Markdown block of named subsections carrying every project-sp
 - **Profile: commit** — staging exclusions (setup artifacts that must stay OUT of commits). Optional.
 - **Profile: isolation** — live-instance container/port patterns to avoid, and the port range for your own isolated stack. Optional, but strongly recommended for projects with live services.
 - **Profile: build discipline** — host-specific build/test serialization rules, layered on top of §3's. Optional.
-- **Profile: post-merge steps** — steps main runs from the MAIN checkout after each merge (never the worktree), each as its own separate commit. Optional.
+- **Profile: post-merge steps** — steps main runs from the MAIN checkout after each merge (never the worktree); a step that leaves tracked changes gets its own separate commit, a step whose output is gitignored commits nothing. Optional.
 - **Profile: review panel** — reviewer roster and review-policy override (may vary the roster by cycle and set a minimum cycle count; the driver and review orchestrator honor it over §2A/§2B's defaults). Optional; default: §2B's panel.
 
 **HARD RULE — the profile travels with the workflow text.** Subagents cannot dereference a "Profile:" pointer any more than a "§2A" pointer: whenever a spawn prompt carries relayed section text (§2A, §2B, §3), it MUST carry the FULL profile block too. A profile pointer without the block silently strips the project rules from the subagent — treat it as the same error as an unresolvable § pointer.
@@ -125,7 +125,7 @@ Work unit = **group** (one or more issues): one worktree, one **driver subagent*
    git branch -d fix/issue-N1-<slug>
    ```
    (`--force`: untracked setup artifacts block removal even after a clean commit. Merge path uses `-d` — the FF-merge just satisfied its unmerged-branch check. Every discard path skips merge, removes with `--force`, and deletes with `-D`.) Main checkout must be clean before any main-side action; if dirty, never stash — post failure comments, discard this group (`--force` + `-D`), END THE RUN, report dirty-checkout.
-5. **Run the profile's post-merge steps** (Profile: post-merge steps), if any, from the MAIN checkout (never the worktree), each as its own SEPARATE commit. Skip this step when the profile defines none.
+5. **Run the profile's post-merge steps** (Profile: post-merge steps), if any, from the MAIN checkout (never the worktree), each as its own SEPARATE commit when it leaves tracked changes. A step whose output is gitignored commits nothing — that is expected, not a failure. Skip this step when the profile defines none.
 6. **Close each fixed issue** in the group with a comment naming the driver's commit hash (commits are local/unpushed, so the `closes #N` keyword will not auto-fire): `gh issue close N --comment "Fixed in commit <hash> ...".` If it carried a `needs-info` label (a prior run's question since answered and worked), §1.4's close rule applies.
 
    **Blocked mid-work / needs operator input.** A `blocked: <reason>` return means a human blocker (decision, missing info, external dep, or review `abort-unsound`). Do NOT stall: comment on the blocking issue (and briefly note other open group issues) with blocker + progress so far; apply `needs-info` on the blocking issue (`gh label create needs-info --description "Blocked on operator or external input" 2>/dev/null; gh issue edit N --add-label needs-info`); leave OPEN; **discard the worktree** (step 4 cleanup, `--force`; no merge). Future triage (§1) resumes when answered.
