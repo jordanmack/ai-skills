@@ -119,6 +119,8 @@ Issues that only become `ready` later this run (after §3 info clear) are **not*
 
 Optional: one set-level line above the table ("all residual cleanup; no new product surface"). Ban `#N - title only` or numbers-only lists.
 
+**Hard rule - table before ask.** The full table must appear in visible output in the **same message** as the authorize question, with **one row for every issue in the pool** - never a count, a summary, or "the issues above" referring to earlier scan output. If asking via an interactive question tool, print the table as message text first (option labels cannot hold it). Asking without the complete table is a skill failure (report under **Briefing self-check** in §7).
+
 **Ask once** (single bulk question) after the table: "Authorize these N issues for the fix pass?" Options: all / subset (list numbers) / none. Recommend a default when appropriate.
 
 **Operator rebucket into the ask line.** If the operator declines a row *and* says it needs a product decision, or explicitly routes it into individual questioning (in the authorize reply or a comment), rebucket that issue to `ask`, ensure `needs-info` (§3A), capture the root question, and add it to the §3 work-list. Pure declines without a product fork stay under **Awaiting approval** (not the ask line).
