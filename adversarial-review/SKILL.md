@@ -148,7 +148,7 @@ Exit requires a **serious-fix-free** clean round: if you applied any *serious* f
 On every stop — clean exit or pause — give the user (mark **Outcome** accordingly):
 
 - **Outcome** — how many rounds ran; clean-round reached or still-in-progress.
-- **Roster** — the reviewers that actually reviewed, the thinking level used for each reviewer (default highest or operator override), and any roster changes during the run: refusals, operator-consented drops, substitutions, and any reviewer that ran scoped. If the roster was repaired, say so plainly — a "clean exit" means nothing without knowing who did and didn't review.
+- **Roster** — the reviewers that actually reviewed, the thinking level used for each reviewer (default high or operator override), and any roster changes during the run: refusals, operator-consented drops, substitutions, and any reviewer that ran scoped. If the roster was repaired, say so plainly — a "clean exit" means nothing without knowing who did and didn't review.
 - **Fixed** — the real issues you addressed, briefly.
 - **Deferred** — real issues left for later (including recorded trivial findings), with why.
 - **Skipped** — real issues judged not worth doing, with why.
