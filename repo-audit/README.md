@@ -7,9 +7,9 @@ Principal-engineer repository audit: map the repo, produce an evidence-based sev
 **Upstream origin is unknown / not confidently attributed.**
 
 This skill first appeared in this repository in commit
-`81ec700` (*Add repo-audit skill*, 2026-06-09). The commit message and
-`Co-Authored-By: Claude Opus 4.8` trailer suggest it was authored here
-(with AI assistance), not imported from a named public skill package.
+`81ec700` (*Add repo-audit skill*, 2026-06-09). The commit message
+suggests it was authored here (with AI assistance), not imported from a
+named public skill package.
 
 No clear external skill repository, author, or URL was found for a prior
 canonical version. If you know the real source, update this README.
