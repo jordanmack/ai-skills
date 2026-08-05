@@ -95,7 +95,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 |---|---|---|---|
 | codex | `gpt-5.6-sol` | `gpt-5.5` | `--model <id>` |
 | grok | `grok-4.5` | `grok-composer-2.5-fast` | `--model <id>` |
-| claude | `opus` (`claude-opus-4-8`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
+| claude | `opus` (`claude-opus-5`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
 
 **Other tiers** — remaining models each CLI reports as available (name explicitly with `--model`; not defaults):
 
@@ -270,7 +270,7 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Mode C: omit --tools (full toolset); keep --effort at the resolved level; the prompt defines scope/guardrails.
 ```
 
-- **Model**: default `--model opus` (`claude-opus-4-8`, strongest); secondary `--model sonnet` (`claude-sonnet-5`). Aliases or full IDs both work.
+- **Model**: default `--model opus` (`claude-opus-5`, strongest); secondary `--model sonnet` (`claude-sonnet-5`). Aliases or full IDs both work.
 - **Thinking**: default to `--effort high` (claude's ceiling is `max`, available on operator override). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Never omit the effort flag.
 - **MCP/LSP residue**: `--tools ""` **on its own** still leaves LSP plus any authenticated MCP tools live (verified: Gmail/Drive/Calendar auth tools remained) — which is why the Mode A example above pairs it with `--strict-mcp-config` to drop MCP (LSP still survives). Without `--strict-mcp-config` those MCP tools can reach the network/external data; with it, you're left with LSP only. The no-explore preamble backs up the built-in cut regardless.
 - **Don't trust the agent's self-report of its tools**: with the same flags, claude sometimes claims it has Write/Bash/etc. and sometimes correctly says it doesn't (verified — the actual capability cut holds either way; only the *narration* is unreliable). Gate orchestrator logic on the flags you passed, never on what the spawned agent says it can do.
