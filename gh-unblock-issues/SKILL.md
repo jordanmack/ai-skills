@@ -8,7 +8,9 @@ description: |
   rebucket bulk rows into the individual ask line. Skips formally deferred issues and
   issues already claimed by a fix pass (`in-progress`) by default. Toggles needs-info
   (cleared = not waiting on info; present = still blocked on input) and, when the gate
-  is present, approved / known-open / deferred per the authorize path. Hard blockers
+  is present, approved / known-open / deferred per the authorize path, including an
+  auto-fix retrofit (bar-passing known-open issues get approved + auto-fix with no
+  ask) when the repo defines an auto-fix path. Hard blockers
   are recorded and reported, never worked here.
   After questions, packages pickable issues into fix-run batches (up to ~30),
   each as parenthesized groups (one worktree + one end review per group). Ends
@@ -111,6 +113,8 @@ Run **after** §1 classification and **before** §3 info work, only if the appro
 - no unresolved hard-blocker / open depends-on.
 
 Also include issues that already carry trusted approval prose in body/comment but lack the label: **normalize** without asking (add `approved`, remove `known-open` and `deferred` if present, short comment).
+
+**Auto-fix retrofit (before building the table).** When the repo's issue contract defines an auto-fix path (an `auto-fix` label plus a bar, per its issue docs or the default "Auto-fix bar" in the generic `gh-fix-issues` skill — load that skill by name for the bar text), test each pool issue against the bar first. On a pass: add `approved` + `auto-fix`, remove `known-open`, comment the one-line bar reason, and drop the issue from the authorize table — it is pickable now, no ask needed. If unsure the bar holds, keep it in the table. Repos without an auto-fix path skip this step.
 
 Issues that only become `ready` later this run (after §3 info clear) are **not** authorized here; list them under **Needs attention → Awaiting approval** in §7 and pick them up on a later authorize pass.
 
@@ -215,9 +219,9 @@ Bare numbers only; `, ` between groups; no trailing comma after the last. Multi-
 - **No code, no worktrees, no merges, no master.** Batches in §4/§7 are handoff hints only.
 - **No closing or deduping** of moot issues (report under Needs attention only if the operator must act).
 - **No hard-blocker chasing** (merge waits, external deps): report only.
-- **No inventing approval** without a gate, and no `approved` without operator yes or trusted normalize signal.
+- **No inventing approval** without a gate, and no `approved` without operator yes, trusted normalize signal, or an auto-fix bar pass (§2 retrofit).
 - **No mutating `in-progress`.** The fix skill owns add and remove; this skill only skips and reports.
-- **GitHub mutations allowed:** comments; `needs-info` ensure/add/remove; when gate present also `approved` add, `known-open`/`deferred` remove (and normalize-add of `deferred` only when trusted deferral prose is already explicit). No body edits, no close.
+- **GitHub mutations allowed:** comments; `needs-info` ensure/add/remove; when gate present also `approved` add, `auto-fix` add on a bar pass (§2 retrofit), `known-open`/`deferred` remove (and normalize-add of `deferred` only when trusted deferral prose is already explicit). No body edits, no close.
 - **Text style:** no em dashes in GitHub comments/labels.
 
 ---
