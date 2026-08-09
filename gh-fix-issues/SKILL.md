@@ -3,9 +3,11 @@ name: gh-fix-issues
 description: |
   Generic autonomous GitHub-issue processing: triage in-scope open issues, fix
   by group (one worktree + one end review per group), verify, FF-merge, clean
-  up, close with a commit ref. Scope: label, plain issue lists, and/or group
-  batches like (12, 15), (7). Project facts from a PROJECT PROFILE (wrapper or
-  derived). One pass, then stop.
+  up, close with a commit ref. After the in-scope open list is known, marks
+  every listed issue `in-progress` (so unblock packaging skips them) and
+  removes that label when this run stops working each issue. Scope: label,
+  plain issue lists, and/or group batches like (12, 15), (7). Project facts
+  from a PROJECT PROFILE (wrapper or derived). One pass, then stop.
   TRIGGER when the operator wants to start fixing open GitHub issues in a
   repo with NO project-specific wrapper for this workflow: says "fix issues" /
   "work the issues" / "process the issue backlog", or invokes /gh-fix-issues.
@@ -30,6 +32,11 @@ Drive the in-scope open GitHub-issue backlog to done by **group** (one worktree 
 When both a plain list and group parens appear, **group syntax wins** for structure; bare numbers outside parens become extra solo groups after the parenthesized ones.
 
 **The main session is a chain orchestrator ONLY.** It decides what runs next and reconciles cross-issue effects. Per-issue/group work (read, implement, test, verify, review findings, difficulty class) belongs to subagents.
+
+**`in-progress` label (main owns every add/remove; drivers never touch it):**
+- **Add once:** after the in-scope open issue list is gathered (§1 step 1), mark **every** issue on that list.
+- **Remove** when this run stops working that issue: triage skip leave-open, close (fixed / already-done / duplicate / moot), `blocked`, `failed`, discard, or dirty-checkout abort.
+- No re-add later. Unblock packaging skips issues that still carry the label.
 
 **HARD RULE — the main session never reads to understand, only to orchestrate.** If a read would help you understand the code or the problem, it belongs to a subagent. The main session MAY read only:
 1. Subagent return values (bounded by the return contract below).
@@ -77,12 +84,18 @@ The profile is ONE Markdown block of named subsections carrying every project-sp
 ## 1. Triage Scan (the First Thing You Do, Once at Start)
 
 0. **Parse scope** from the invocation (Scope forms above) into: a label filter, and/or an ordered list of **groups** (each group = ordered issue numbers). Plain lists become solo groups. No numbers and no label → groups empty for now (fill from the open list below). Persist the parsed groups in the §4 resume note.
-1. List the in-scope open issues yourself (this is plumbing — numbers/titles/labels only, no bodies, so it stays in the main session). If groups or bare numbers were given, restrict to those numbers (still prefer `gh issue list` / `gh issue view` for open state; skip closed unless the operator pinned a closed id to inspect). If only a label was given, list open with that label. Else all open:
+1. **List** the in-scope open issues yourself (this is plumbing — numbers/titles/labels only, no bodies, so it stays in the main session). If groups or bare numbers were given, restrict to those numbers (still prefer `gh issue list` / `gh issue view` for open state; skip closed unless the operator pinned a closed id to inspect). If only a label was given, list open with that label. Else all open:
    `gh issue list --state open --limit 1000 --json number,title,labels --jq 'sort_by(.number)[]'`
    (`--limit 1000` covers any realistic backlog; a bare list silently drops the tail past the limit, so do not lower it.)
-   If groups were empty (default all-open or label-only), after the list each open issue is a **solo group** in list order (triage order may reorder actionable work in step 4).
-2. **Delegate the read to a triage subagent.** Reading bodies and comment threads inline is the single largest main-session context sink, so the main session never does it. Spawn ONE triage subagent, hand it the in-scope issue numbers, and have it read each candidate's body and comments (`gh issue view <N> --json title,body,comments,labels`) and return a compact disposition table — nothing else. Give it these instructions verbatim:
-   - Read ALL candidates, including any carrying a `needs-info` label. The comments carry the real status.
+   If groups were empty (default all-open or label-only), after the list each open issue is a **solo group** in list order (triage order may reorder actionable work in step 5).
+2. **Mark the list `in-progress`** (main only; once, immediately after the list is known — paste list or lookup, same rule). Unblock packaging will skip these while the label remains:
+   ```
+   gh label create in-progress --description "Claimed by an active fix pass" 2>/dev/null || true
+   gh issue edit <N> --add-label in-progress   # every open issue from step 1
+   ```
+   If an add fails for an issue, note it under §5 and continue with the rest (do not invent a second claim path).
+3. **Delegate the read to a triage subagent.** Reading bodies and comment threads inline is the single largest main-session context sink, so the main session never does it. Spawn ONE triage subagent, hand it the in-scope issue numbers, and have it read each candidate's body and comments (`gh issue view <N> --json title,body,comments,labels`) and return a compact disposition table — nothing else. Give it these instructions verbatim:
+   - Read ALL candidates, including any carrying a `needs-info` label. The comments carry the real status. (`in-progress` may already be present from step 2; that is expected and does not change disposition.)
    - For each issue, emit one table row: `| # | verdict | one-line reason | blocker/dup refs |`, where verdict is one of `do` / `skip-blocked` / `skip-duplicate` / `already-done` / `resume-partial` / `needs-info-still-waiting`.
    - Disposition rules to apply while reading:
      - A comment saying the issue is **already fixed / merged / closed elsewhere** → `already-done` (capture the evidence, e.g. the commit/PR ref, in the reason).
@@ -92,12 +105,12 @@ The profile is ONE Markdown block of named subsections carrying every project-sp
      - A comment (often from a prior run) recording **partial progress** or a chosen approach → `resume-partial` (one line on where to resume).
      - A prior second-opinion comment recording an agreed disposition (e.g. "Codex + Grok converged: file" → `do`, or "...: skip/close" → the matching skip/close verdict) should be honored as that disposition.
    - The table IS the return value. Do NOT paste issue bodies, comment text, or any other prose. Any evidence main will put in a close comment (the commit/PR ref for `already-done`, the counterpart for `skip-duplicate`) MUST be inline in the row's reason/refs — main cannot read a scratch file and a close comment needs a durable GitHub-visible reference, not a path. If an issue needs a longer note than fits one line, write the overflow to `<scratch>/triage/issue-<N>.md` and put the path in refs as SUPPLEMENTAL detail, never as the sole evidence for a close. Do NOT edit labels or otherwise mutate issues — you only read and report; the main session owns every `gh` mutation.
-3. Build a task list from the triage table and the parsed **groups**. Keep only `do` / `resume-partial` in each group; drop empty groups. That ordered list is the fixed work-list (process once). Explicit groups: **preserve membership and group order** (reorder inside a group only for a triage prereq). Solo groups (default/label/plain list): order by dependency leverage (prereq first; else lowest number).
-4. Disposition every triage row, then work the actionable **groups**. **Close rule:** on any close that touches `needs-info`, clear it: `gh issue edit <N> --remove-label needs-info 2>/dev/null`. Drop non-actionable issues from their groups as you disposition them:
-   - `already-done` → close now with evidence ref from the table; no driver.
-   - `skip-duplicate` → comment naming counterpart and close as duplicate; no driver.
-   - `skip-blocked` / `needs-info-still-waiting` → leave OPEN; no comment needed.
-   - `do` / `resume-partial` → stay in group for §2.
+4. Build a task list from the triage table and the parsed **groups**. Keep only `do` / `resume-partial` in each group; drop empty groups. That ordered list is the fixed work-list (process once). Explicit groups: **preserve membership and group order** (reorder inside a group only for a triage prereq). Solo groups (default/label/plain list): order by dependency leverage (prereq first; else lowest number).
+5. Disposition every triage row, then work the actionable **groups**. **Remove `in-progress`** whenever this run stops working an issue (`gh issue edit <N> --remove-label in-progress 2>/dev/null`). **Close rule:** on any close, also clear `needs-info` best-effort: `gh issue edit <N> --remove-label needs-info 2>/dev/null`. Drop non-actionable issues from their groups as you disposition them:
+   - `already-done` → remove `in-progress`, close now with evidence ref from the table; no driver.
+   - `skip-duplicate` → remove `in-progress`, comment naming counterpart and close as duplicate; no driver.
+   - `skip-blocked` / `needs-info-still-waiting` → remove `in-progress`, leave OPEN; no comment needed.
+   - `do` / `resume-partial` → stay in group for §2 (keep `in-progress` until that issue finishes).
 
    Any follow-up issues this run files are deferred to a future invocation, not worked now.
 
@@ -112,23 +125,23 @@ Work unit = **group** (one or more issues): one worktree, one **driver subagent*
    git worktree add <worktree-root>/issue-N1 -b fix/issue-N1-<slug> <main-branch>
    ```
 2. **Spawn a driver subagent** for group G (§2A), pointed at that worktree (required — never implement in main). Relay §2A/§2B text plus the FULL profile (§0), safety (§3), ordered issue list, worktree path, scratch `<scratch>/issue-N1/`, triage rows, review overrides, and return contract. Do NOT pre-classify. Spawn every other independent group's driver without waiting on this one (create its worktree, then its driver), up to the parallelism cap (§2 intro; default 5); collect each one-line return when ready. Do NOT read the diff, files, gate output, or review findings.
-3. **Act on the driver's return** (a single status line). Only `clean` runs steps 4-7 in full (merge, post-merge steps, close, follow-ups); `blocked`/`failed`/`moot` each do their own disposition below and then skip straight to the next group (step 8):
+3. **Act on the driver's return** (a single status line). Only `clean` runs steps 4-7 in full (merge, post-merge steps, close, follow-ups); `blocked`/`failed`/`moot` each do their own disposition below and then skip straight to the next group (step 8). **Remove `in-progress`** on every path that ends work on an issue (`gh issue edit <N> --remove-label in-progress 2>/dev/null`); on close, §1 step 5's close rule also clears it.
    - `clean: <commit-hash>` → the driver committed and verified in its worktree branch (one hash for the group, covering all issues it fixed). Proceed to merge (step 4).
-   - `blocked: <reason>` → nothing to merge. Handle per **Blocked mid-work** below (which includes cleanup), then continue to the next group.
-   - `failed: <reason>` → the driver could not get gates green (or the review panel was unavailable); nothing to merge. Leave each still-open group issue OPEN with a status comment recording the cause, discard the worktree (the shared cleanup in step 4, `--force` since it is dirty; no merge), and continue to the next group. Add `needs-info` only if it genuinely needs a human (a plain panel outage does not — it resumes next run).
-   - `moot: <evidence>` → an earlier fix this run already resolved every issue in the group (or the only issue); discard the worktree (step 4 cleanup, `--force`; no merge) and close each moot issue with a comment citing the evidence (§1.4's close rule applies). Continue to the next group.
-   - anything else (no return, a malformed line, or a contract violation) → treat as `failed: driver error`: leave group issues OPEN with a status comment, discard the worktree (step 4 cleanup, `--force`; no merge), and continue. Do NOT improvise a merge from an unclear return.
+   - `blocked: <reason>` → nothing to merge. Handle per **Blocked mid-work** below (which includes remove + cleanup), then continue to the next group.
+   - `failed: <reason>` → the driver could not get gates green (or the review panel was unavailable); nothing to merge. **Remove `in-progress`** on each still-open group issue; leave each OPEN with a status comment recording the cause; discard the worktree (the shared cleanup in step 4, `--force` since it is dirty; no merge); continue to the next group. Add `needs-info` only if it genuinely needs a human (a plain panel outage does not — it resumes next run).
+   - `moot: <evidence>` → an earlier fix this run already resolved every issue in the group (or the only issue); discard the worktree (step 4 cleanup, `--force`; no merge) and close each moot issue with a comment citing the evidence (§1 step 5's close rule removes `in-progress`). Continue to the next group.
+   - anything else (no return, a malformed line, or a contract violation) → treat as `failed: driver error`: **remove `in-progress`**, leave group issues OPEN with a status comment, discard the worktree (step 4 cleanup, `--force`; no merge), and continue. Do NOT improvise a merge from an unclear return.
 4. **FF-merge to the main branch and AUTO-CLEAN** (from the main checkout), using the hash the driver returned. Confirm the main checkout is on the main branch first:
    ```
    git merge --ff-only fix/issue-N1-<slug>
    git worktree remove --force <worktree-root>/issue-N1
    git branch -d fix/issue-N1-<slug>
    ```
-   (`--force`: untracked setup artifacts block removal even after a clean commit. Merge path uses `-d` — the FF-merge just satisfied its unmerged-branch check. Every discard path skips merge, removes with `--force`, and deletes with `-D`.) Main checkout must be clean before any main-side action; if dirty, never stash — post failure comments, discard this group (`--force` + `-D`), END THE RUN, report dirty-checkout.
+   (`--force`: untracked setup artifacts block removal even after a clean commit. Merge path uses `-d` — the FF-merge just satisfied its unmerged-branch check. Every discard path skips merge, removes with `--force`, and deletes with `-D`.) Main checkout must be clean before any main-side action; if dirty, never stash — **remove `in-progress`** on open group issues, post failure comments, discard this group (`--force` + `-D`), END THE RUN, report dirty-checkout.
 5. **Run the profile's post-merge steps** (Profile: post-merge steps), if any, from the MAIN checkout (never the worktree), each as its own SEPARATE commit when it leaves tracked changes. A step whose output is gitignored commits nothing — that is expected, not a failure. Skip this step when the profile defines none.
-6. **Close each fixed issue** in the group with a comment naming the driver's commit hash (commits are local/unpushed, so the `closes #N` keyword will not auto-fire): `gh issue close N --comment "Fixed in commit <hash> ...".` If it carried a `needs-info` label (a prior run's question since answered and worked), §1.4's close rule applies.
+6. **Close each fixed issue** in the group with a comment naming the driver's commit hash (commits are local/unpushed, so the `closes #N` keyword will not auto-fire): `gh issue close N --comment "Fixed in commit <hash> ...".` §1 step 5's close rule clears `needs-info` and `in-progress`.
 
-   **Blocked mid-work / needs operator input.** A `blocked: <reason>` return means a human blocker (decision, missing info, external dep, or review `abort-unsound`). Do NOT stall: comment on the blocking issue (and briefly note other open group issues) with blocker + progress so far; apply `needs-info` on the blocking issue (`gh label create needs-info --description "Blocked on operator or external input" 2>/dev/null; gh issue edit N --add-label needs-info`); leave OPEN; **discard the worktree** (step 4 cleanup, `--force`; no merge). Future triage (§1) resumes when answered.
+   **Blocked mid-work / needs operator input.** A `blocked: <reason>` return means a human blocker (decision, missing info, external dep, or review `abort-unsound`). Do NOT stall: **remove `in-progress`** on every still-open issue in the group first; comment on the blocking issue (and briefly note other open group issues) with blocker + progress so far; apply `needs-info` on the blocking issue (`gh label create needs-info --description "Blocked on operator or external input" 2>/dev/null; gh issue edit N --add-label needs-info`); leave OPEN; **discard the worktree** (step 4 cleanup, `--force`; no merge). Future triage (§1) resumes when answered. Unblock may re-ask or re-batch once the label is gone.
 7. **File follow-ups** for lasting work in the driver's follow-up bullets (deferred non-fix, out-of-scope, test-infra, non-serious review leftovers) as `known-open` issues (`gh label create known-open --description "Known open follow-up" 2>/dev/null`). A degraded-panel (`n/m`) bullet goes only to the §5 report, not a filed issue.
 8. Mark the group complete. Start ALL remaining ready groups now, in parallel up to the cap (default 5) — do not work them one at a time. Never start a dependent group before its prereq group's merge when triage refs require it.
 
@@ -188,7 +201,7 @@ Fold isolation, build-discipline, text-style, and the full profile into the driv
 
 ## 4. Resume Across a Compact
 
-At each checkpoint persist: skill name, **parsed groups** + overrides, profile identity (or full derived profile), scratch root, DONE issue→hash map, and IN-FLIGHT group state (issue list, worktree, driver running/returned, status line + hash, merge/clean/close done?). Store only status lines and artifact paths — never diffs, findings, or gate logs. Reference this skill file for rules; do not copy it into the note. On resume, re-verify hashes, merge state, open issues, and worktrees against git/`gh` before acting; status is verified, never trusted.
+At each checkpoint persist: skill name, **parsed groups** + overrides, profile identity (or full derived profile), scratch root, the step-1 issue list (all marked `in-progress`), DONE issue→hash map, and IN-FLIGHT group state (issue list, worktree, driver running/returned, status line + hash, merge/clean/close done?). Store only status lines and artifact paths — never diffs, findings, or gate logs. Reference this skill file for rules; do not copy it into the note. On resume, re-verify hashes, merge state, open issues, and worktrees against git/`gh` before acting; status is verified, never trusted. For any issue from this run's step-1 list that is no longer being worked (not in an open group and not pending close), **remove `in-progress`** if it is still present. Do not re-add the label on resume.
 
 ---
 
@@ -199,7 +212,8 @@ When the in-scope backlog is drained, surface ONE batched report and STOP:
 - any closed as already-done / duplicate / `moot`, with the evidence;
 - any skipped/blocked ones and why;
 - the `needs-info` issues with the specific open question each is awaiting (these are the ones genuinely blocked on a human);
-- issues left OPEN by a `failed` return (gate failure or panel-unavailable) that should be retried next run;
+- issues left OPEN by a `failed` return (gate failure or panel-unavailable) that should be retried next run (`in-progress` removed);
+- any open issue from this run's list that still carries `in-progress` after the run ended (remove failed — operator may clear);
 - any fix that merged on an `n/m` degraded panel (less than full review coverage);
 - pending approvals (e.g. the unpushed main branch);
 - residual risks (including non-serious review findings filed as `known-open`);

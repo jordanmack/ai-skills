@@ -5,10 +5,11 @@ description: |
   an approval gate, first bulk-authorize implementable issues via a ships/risk/tier
   table (open + not approved + not deferred); then clear product/info gaps one
   simplified non-technical root question at a time (brief before ask). Operator may
-  rebucket bulk rows into the individual ask line. Skips formally deferred issues by
-  default. Toggles needs-info (cleared = not waiting on info; present = still blocked
-  on input) and, when the gate is present, approved / known-open / deferred per the
-  authorize path. Hard blockers are recorded and reported, never worked here.
+  rebucket bulk rows into the individual ask line. Skips formally deferred issues and
+  issues already claimed by a fix pass (`in-progress`) by default. Toggles needs-info
+  (cleared = not waiting on info; present = still blocked on input) and, when the gate
+  is present, approved / known-open / deferred per the authorize path. Hard blockers
+  are recorded and reported, never worked here.
   After questions, packages pickable issues into fix-run batches (up to ~30),
   each as parenthesized groups (one worktree + one end review per group). Ends
   with needs-attention, batch tables, and copy-paste lines like (12, 15), (7).
@@ -23,7 +24,7 @@ argument-hint: "Optional: issue/label scope, priority, or batch count; default a
 
 # /gh-unblock-issues: Triage and Unblock a GitHub Issue Backlog
 
-**Goal:** make as much of the open backlog **pickable by the fix pass** as this skill can, then **package those pickable issues into fix-run batches** the operator can paste into the fix workflow. That means answering product/info questions, clearing stale `needs-info`, **authorizing** implementable work when the repo gates on approval, and emitting batch handoffs. Skip formally **deferred** issues by default. This skill does **not** fix code and does **not** touch any branch or working tree. It reads freely (issues, and repo docs when that answers a question); it writes only issue metadata (comments and labels). Working a batch once it is pickable is a separate job for the fix workflow.
+**Goal:** make as much of the open backlog **pickable by the fix pass** as this skill can, then **package those pickable issues into fix-run batches** the operator can paste into the fix workflow. That means answering product/info questions, clearing stale `needs-info`, **authorizing** implementable work when the repo gates on approval, and emitting batch handoffs. Skip formally **deferred** issues and issues carrying **`in-progress`** (claimed by a live fix pass) by default. This skill does **not** fix code and does **not** touch any branch or working tree. It reads freely (issues, and repo docs when that answers a question); it writes only issue metadata (comments and labels). Working a batch once it is pickable is a separate job for the fix workflow.
 
 One skill, two phases after classification: **unblock** (§2 authorize + §3 info), then **package** (§4 groups/batches). Default runs both; packaging is handoff only.
 
@@ -33,20 +34,21 @@ One skill, two phases after classification: **unblock** (§2 authorize + §3 inf
 3. **Package** (§4) - group pickable issues into fix-run batches.
 
 **Repo Ready predicate (what "pickable" means):**
-- **Approval gate present** (repo has an `approved` label, or issue docs / project profile define Ready as open + `approved` + not `needs-info`): pickable = **open + `approved` + not `needs-info`**. Do not claim the fix pass can pick an issue that lacks `approved`.
-- **No approval gate:** pickable = open + not `needs-info`. Do **not** invent `approved`.
+- **Approval gate present** (repo has an `approved` label, or issue docs / project profile define Ready as open + `approved` + not `needs-info`): pickable = **open + `approved` + not `needs-info` + not `in-progress`**. Do not claim the fix pass can pick an issue that lacks `approved`.
+- **No approval gate:** pickable = open + not `needs-info` + not `in-progress`. Do **not** invent `approved`.
 
-Deferred issues are never pickable while they still carry `deferred` (unless operator args force them in).
+Deferred issues are never pickable while they still carry `deferred` (unless operator args force them in). Issues with `in-progress` are never pickable (claimed by a fix pass); do not authorize, ask, or batch them unless the operator args force them in (e.g. "include in-progress" or a single-issue pin).
 
 Detect the gate once at start (`gh label list` and/or repo `docs/github-issues.md` / profile). If the gate exists, use the authorize path (§2). If not, skip §2 entirely.
 
-**Handoff labels (when the gate is present, use exact names):**
+**Handoff labels (use exact names):**
 - `needs-info` - waiting on operator/external input (shared with the fix skill).
-- `approved` - implementation authorized.
-- `known-open` - tracked parking lot, not approved (if the repo uses it).
-- `deferred` - formal "not now" after review (additive on parking; skip by default).
+- `in-progress` - a fix-pass driver currently owns this issue (applied/cleared only by the fix skill; never mutate here).
+- `approved` - implementation authorized (gate only).
+- `known-open` - tracked parking lot, not approved (if the repo uses it; gate only).
+- `deferred` - formal "not now" after review (additive on parking; skip by default; gate only when the repo uses it).
 
-When the gate is absent, only `needs-info` is load-bearing.
+When the gate is absent, `needs-info` and `in-progress` are the load-bearing handoff labels.
 
 **Interaction style - brief before ask (hard rule).** Always **brief → question → wait** for product and authorize questions; reverse order is a skill failure.
 
@@ -70,7 +72,7 @@ Authorize questions use the §2 table (required brief). If a question can be ans
    gh issue list --state open --limit 1000 --json number,title,labels --jq 'sort_by(.number)[]'
    ```
    (`--limit 1000` covers any realistic backlog; if the returned count equals the limit, note **Scan truncated** under Needs attention in §7.)
-2. **Skip `deferred` by default.** Any issue carrying `deferred` is out of the work-list (no ask, no authorize) unless the operator args explicitly include it (e.g. "include deferred" or a single-issue pin of a deferred issue).
+2. **Skip `deferred` and `in-progress` by default.** Any issue carrying `deferred` or `in-progress` is out of the work-list (no ask, no authorize, no batch) unless the operator args explicitly include it (e.g. "include deferred", "include in-progress", or a single-issue pin of that issue). List skipped `in-progress` numbers under **Needs attention → In progress** in §7 (visibility only; do not clear the label).
 3. **Read each remaining candidate** - body and ALL comments - in the main session (no subagents). One bulk call fetches the whole backlog with threads:
    ```
    gh issue list --state open --limit 1000 --json number,title,labels,body,comments
@@ -102,6 +104,7 @@ Run **after** §1 classification and **before** §3 info work, only if the appro
 **Authorize pool:** in-scope issues that are:
 - open,
 - **not** `deferred` (already skipped unless args override),
+- **not** `in-progress` (already skipped unless args override),
 - **not** `approved`,
 - classified `ready` at §1,
 - not still `needs-info` waiting on an open product question,
@@ -181,7 +184,7 @@ Run **after** §2 and §3, once nothing remains to ask this pass (or leftover as
 
 ### 4A. Pickable set
 
-Only issues that meet the **Repo Ready predicate** now (re-check labels if you mutated any). Exclude deferred, needs-info, hard-blocked, moot-still-open, and (with gate) unapproved. Re-read body/comments if needed to group/order (refresh after label or answer changes).
+Only issues that meet the **Repo Ready predicate** now (re-check labels if you mutated any). Exclude deferred, in-progress, needs-info, hard-blocked, moot-still-open, and (with gate) unapproved. Re-read body/comments if needed to group/order (refresh after label or answer changes).
 
 ### 4B. Groups and batches
 
@@ -213,6 +216,7 @@ Bare numbers only; `, ` between groups; no trailing comma after the last. Multi-
 - **No closing or deduping** of moot issues (report under Needs attention only if the operator must act).
 - **No hard-blocker chasing** (merge waits, external deps): report only.
 - **No inventing approval** without a gate, and no `approved` without operator yes or trusted normalize signal.
+- **No mutating `in-progress`.** The fix skill owns add and remove; this skill only skips and reports.
 - **GitHub mutations allowed:** comments; `needs-info` ensure/add/remove; when gate present also `approved` add, `known-open`/`deferred` remove (and normalize-add of `deferred` only when trusted deferral prose is already explicit). No body edits, no close.
 - **Text style:** no em dashes in GitHub comments/labels.
 
@@ -237,6 +241,7 @@ When classification, §2 authorize (if gated), §3 info, and §4 packaging are d
 List **only** items that still need a human (omit empty bullets entirely):
 - **Still waiting** - unanswered product questions; prereq-skipped asks (with the open question or blocker in one line each).
 - **Awaiting approval** - (gate only) implementable, not deferred, operator declined without rebucket, not yet authorized, or became ready only after §3 this run.
+- **In progress** - open issues carrying `in-progress` skipped this run (claimed by a fix pass). Numbers only, one line. If a label looks stale, the operator clears it; this skill does not clear it.
 - **Hard-blocked** - blocker and what would unblock (one line each).
 - **Handoff incomplete** - failed gated label/comment writes; note falsely pickable risk vs safely blocked.
 - **Scan truncated** - only if the open-issue list hit the `--limit 1000` cap.
