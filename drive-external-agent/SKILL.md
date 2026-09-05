@@ -93,7 +93,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Primary | Secondary | Flag form |
 |---|---|---|---|
-| codex | `gpt-5.6-sol` | `gpt-5.5` | `--model <id>` |
+| codex | `gpt-6-astra` | `gpt-5.6-sol` | `--model <id>` |
 | grok | `grok-4.6` | `grok-4.5` | `--model <id>` |
 | claude | `opus` (`claude-opus-5`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
 
@@ -103,8 +103,9 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 |---|---|---|
 | codex | `gpt-5.6-terra` | 5.6 frontier variant; supports `max` and `ultra`. |
 | codex | `gpt-5.6-luna` | 5.6 variant; supports up to `max`. |
-| codex | `gpt-5.4` | Previous generation; use when 5.5/5.6 is overkill. |
-| codex | `gpt-5.4-mini` | Smaller/cheaper 5.4; use for light tasks. |
+| codex | `gpt-5.5` | Previous generation; ceiling `xhigh`. |
+| codex | `gpt-5.4` | Older generation, hidden in the picker; use when 5.5/5.6 is overkill. |
+| codex | `gpt-5.4-mini` | Smaller/cheaper 5.4, hidden; use for light tasks. |
 | codex | `gpt-5.2` | Legacy; reach only if the operator names it. |
 | claude | `fable` (`claude-fable-5`) | Most capable for hardest/longest tasks, but **most expensive** — kept out of primary/secondary for cost. Reach for it only when opus/sonnet fall short. |
 | claude | `haiku` (`claude-haiku-4-5-20251001`) | Fastest, for quick answers. |
@@ -113,7 +114,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Effort flag | Levels available (low → high) | Default (today) | Ceiling (by model) |
 |---|---|---|---|---|
-| codex | `-c 'model_reasoning_effort="<level>"'` | **5.6-sol / 5.6-terra:** `low, medium, high, xhigh, max, ultra` · **5.6-luna:** `low, medium, high, xhigh, max` · **5.5 / 5.4 / 5.4-mini / 5.2:** `low, medium, high, xhigh` | **`high`** | `ultra` on `gpt-5.6-sol`/`gpt-5.6-terra`; `max` on `gpt-5.6-luna`; `xhigh` on `gpt-5.5` and legacy 5.x |
+| codex | `-c 'model_reasoning_effort="<level>"'` | **6-astra / 5.6-sol / 5.6-terra:** `low, medium, high, xhigh, max, ultra` · **5.6-luna:** `low, medium, high, xhigh, max` · **5.5 / 5.4 / 5.4-mini / 5.2:** `low, medium, high, xhigh` | **`high`** | `ultra` on `gpt-6-astra`/`gpt-5.6-sol`/`gpt-5.6-terra`; `max` on `gpt-5.6-luna`; `xhigh` on `gpt-5.5` and legacy 5.x |
 | grok | `--effort <level>` | `low, medium, high, xhigh` | **`high`** | `xhigh` |
 | claude | `--effort <level>` | `low, medium, high, xhigh, max` | **`high`** | `max` |
 
@@ -121,7 +122,7 @@ Note: grok 1.0.13 dropped `grok-composer-2.5-fast`; `grok models` now also lists
 
 ### Attaching images / files (vision)
 
-All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.6, gpt-5.6-sol, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
+All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.6, gpt-6-astra, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
 
 ```bash
 # Pattern verified on the former grok composer model; reasoning models (grok-4.6) expected to match — generalizes to codex/claude (both read files natively).
@@ -157,7 +158,7 @@ codex exec … - < "$PROMPT_FILE"               # file redirect into the - senti
 ```bash
 # Mode A (sealed second opinion):
 printf '%s' "$PROMPT" | codex exec \
-  --model gpt-5.6-sol \
+  --model gpt-6-astra \
   -c 'model_reasoning_effort="high"' \
   -c 'mcp_servers={}' \
   --sandbox read-only \
@@ -175,8 +176,8 @@ printf '%s' "$PROMPT" | codex exec \
 # Mode C: swap --sandbox workspace-write; drop --skip-git-repo-check if operating in a repo; prompt defines the job.
 ```
 
-- **Model**: default `--model gpt-5.6-sol` (strongest); secondary `--model gpt-5.5`. Always pin — defaults drift.
-- **Thinking**: default to `high` (set `-c 'model_reasoning_effort="high"'`); every codex model supports it. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it (ceilings: `ultra` on `gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-5.6-luna`, `xhigh` on `gpt-5.5` and legacy 5.x); otherwise fail and report. Never omit the setting.
+- **Model**: default `--model gpt-6-astra` (strongest); secondary `--model gpt-5.6-sol`. Always pin — defaults drift.
+- **Thinking**: default to `high` (set `-c 'model_reasoning_effort="high"'`); every codex model supports it. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it (ceilings: `ultra` on `gpt-6-astra`/`gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-5.6-luna`, `xhigh` on `gpt-5.5` and legacy 5.x); otherwise fail and report. Never omit the setting.
 
 ### grok (xAI)
 
