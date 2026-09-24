@@ -63,6 +63,8 @@ The first operator message after invoke may already be a dictation. Otherwise wa
 
 3. **Review. Do not rubber-stamp.** Ask only what you still need to scope a fix or design a solution. Push back when the diagnosis is wrong, the behavior is by design, a simpler path exists, or the work should not be an issue. Interject your own view. Look up what you can (exhaust **Profile: understanding** first); never spend a question on something the repo or thread already answers. Questions are **one at a time**: short brief, then the fork, then wait (`Question k of N` when you have a list).
 
+   **Unanswered questions.** A question closes only when a reply addresses it; never infer an answer from new dictation. Until then it stays open: repeat it at the end of every later response. `Question k of N` counts across all dictations. An open question holds back only its own issue; file the others as they settle.
+
    **Second opinions.** For complicated or high-stakes issues, recommend a panel before filing. On operator yes, dispatch **Profile: review panel** in parallel, one independent read-only pass each, fresh context, via `/drive-external-agent` Mode B, scoped read (resolve model ids and flags in that skill; do not pin versions here). Each reviewer may read the repo and must not write. Give each the proposed issue, the evidence, and the open question; ask for a plain verdict and reasons. Synthesize; do not paste verbatim. Agreement across families is strong signal; surface disagreement. Then continue the review or file.
 
 4. **File** each settled group (no open questions for that issue, or the operator overrules and tells you to file). Dispositions:
