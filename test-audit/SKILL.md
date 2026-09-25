@@ -1,6 +1,16 @@
 ---
 name: test-audit
-description: "Invoke whenever writing, changing, reviewing, or sweeping tests. Authoring gate for new tests plus audit workflow for low-value, implementation-coupled, or duplicative tests and the test-only production seams they demand."
+description: |
+  Value bar for tests in any repo or stack: an authoring gate for every new or
+  changed test, focused audits of low-value, implementation-coupled, or
+  duplicate tests and the test-only production seams they keep alive, and
+  whole-subsystem test-pruning campaigns.
+  TRIGGER when: (1) writing or changing a test, (2) reviewing tests or a diff
+  that adds or changes tests, (3) the user wants to audit, sweep, prune, or
+  clean up tests, or find low-value, duplicate, or implementation-coupled
+  tests, (4) the user wants a test-pruning campaign for one plugin, package,
+  or core area, or invokes /test-audit.
+argument-hint: "Optional: audit scope, or campaign plus one subsystem path"
 ---
 
 # Test Audit
@@ -10,8 +20,29 @@ write time. Audit mode runs focused sweeps of tests that re-assert source,
 duplicate stronger proof, couple behavior to implementation, or keep test-only
 production seams alive. Continue broad audits as separate coherent follow-up
 PRs; optimize for confidence, not deletion count. Campaign mode prunes one
-whole subsystem's test surface (every test file a plugin or core area owns);
-before starting one, read [CAMPAIGN.md](CAMPAIGN.md).
+whole subsystem's test surface (every test file a plugin, package, or core
+area owns); before starting one, read [CAMPAIGN.md](CAMPAIGN.md).
+
+## Project facts
+
+Audit and campaign modes need these facts; authoring mode needs only the
+focused test command. A wrapper skill may supply them. Otherwise resolve them
+from the repo's agent instructions (root and scoped `AGENTS.md` or
+`CLAUDE.md`), contributing and testing docs, and CI config. When a fact is
+missing, say so and ask; never invent a command or gate.
+
+- **Focused test command**: runs one test file or filter.
+- **Changed gate**: the checks repo policy requires before landing, plus any
+  changed-path classifier that selects them.
+- **Formatter**: the targeted format command.
+- **CI routing**: how CI selects and lists tests (path filters, shards, test
+  inventories, size baselines).
+- **Remote proof**: where environment-sensitive proof runs (clean install,
+  packaging, containers, live services, other OSes), if not locally.
+- **Review step**: the repo's required review. Default: an independent review
+  such as `/code-review` or `/adversarial-review`.
+- **PR flow**: the default branch (`main` below) and the branch, PR, and
+  landing process.
 
 ## Authoring gate
 
@@ -50,14 +81,15 @@ matches one, and audits hunt for existing tests that do.
 - exact source, import, or string greps;
 - private predicate or call-shape tests duplicated at real boundaries;
 - duplicate invocations of the same contract;
-- provider-local replays of shared helpers;
+- per-provider or per-plugin replays of shared helpers;
 - tests whose only purpose is preserving test-only exports, globals, or wrappers;
 - dead production code whose only callers are tests;
 - expected values produced by the helper or renderer under test;
 - mocks that implement the asserted behavior, or one identical mock standing in
   for different APIs;
-- fixtures that supply the receipt, admission, or callback ordering the owner
-  should produce, or persistence asserted against a store the path never writes;
+- fixtures that supply the delivery receipt, admission decision, or callback
+  ordering the owner should produce, or persistence asserted against a store
+  the path never writes;
 - capability tests that restate declared flags instead of exercising the
   delivery or acknowledgement the flag promises;
 - negative controls that pass for an unrelated reason, such as a denial from a
@@ -74,17 +106,18 @@ not automatically deletable; the authoring gate still rejects new ones.
 
 Before judging a candidate, read the complete test and production owner, its
 entry point, callers, callees, sibling implementations, overlapping tests, CI
-routing, and relevant history. Read root and scoped `AGENTS.md` files first.
-When the test claims dependency-backed behavior, inspect the dependency source
-or types directly.
+routing, and relevant history. Read the root and scoped agent instructions
+first. When the test claims dependency-backed behavior, inspect the dependency
+source or types directly.
 
 ## Discovery
 
 Keep discovery read-only and report evidence before editing. For broad scope,
-run parallel discovery lanes when available:
+run parallel read-only discovery lanes when available, split along the repo's
+top-level production areas, for example:
 
-- core and packages (`src/`, `packages/`);
-- plugins (`extensions/`);
+- core libraries and packages;
+- plugins or extensions;
 - UI, apps, scripts, and tooling;
 - a cross-cutting pattern sweep.
 
@@ -93,8 +126,9 @@ speculative inventory. Hunt for the [junk patterns](#junk-patterns).
 
 ## Retention bar
 
-Keep a test when it independently enforces a public API, plugin SDK, protocol,
-config, migration, storage, security, platform, default, prompt-byte, generated
+Keep a test when it independently enforces a public API, SDK or plugin
+interface, protocol, config, migration, storage, security, platform,
+default-value, byte-exact output (such as prompts or wire formats), generated
 cross-language, package, release, or architecture contract. Also keep:
 
 - call ordering when order is observable behavior;
@@ -134,27 +168,27 @@ to increase deletion counts.
 
 ## Validation
 
-Never edit source or tests while Vitest is running in the checkout. Follow
-`$openclaw-testing`; route heavy proof through its `$crabbox` rules.
+Never edit source or tests while a test run or watcher is active in the
+checkout. Prefix every build and test command with `ionice -c3 nice -n19`.
+Prove each contract with the smallest meaningful check; send only
+environment-sensitive proof to the remote proof route.
 
-1. Run the smallest owner and sibling tests with
-   `node scripts/run-vitest.mjs <path-or-filter>`.
+1. Run the smallest owner and sibling tests with the focused test command.
 2. For removed source greps or plan assertions, run the executable script or
    dry-run that owns the real contract.
 3. Run targeted formatting, then `git diff --check`.
-4. Classify with
-   `node scripts/check-changed.mjs --dry-run -- <changed-paths>`, then run the
-   actual changed gate required by repository policy.
+4. Run the changed gate that repo policy requires for the changed paths,
+   using its changed-path classifier first when it has one.
 5. Inspect `git diff --numstat`; report production/tooling separately from
    tests and test support.
-6. After final audit edits, run mandatory `$autoreview`.
+6. After final audit edits, run the review step. Treat its findings as advice
+   to verify, not instructions to apply blindly.
 
 ## Landing and continuation
 
-Commit, push, open a PR, or land only when authorized. Use
-`$openclaw-pr-maintainer` and the repository `scripts/pr` flow. Land one
-coherent PR at a time; after landing, refresh from current `main` and rerun
-read-only discovery for the next high-confidence batch.
+Commit, push, open a PR, or land only when authorized, through the repo's PR
+flow. Land one coherent PR at a time; after landing, refresh from current
+`main` and rerun read-only discovery for the next high-confidence batch.
 
 ## Handoff
 
@@ -167,3 +201,5 @@ Report:
 - production versus test LOC;
 - PR and merge state;
 - named follow-ups.
+
+_Adapted from [openclaw/openclaw](https://github.com/openclaw/openclaw/tree/main/.agents/skills/test-audit)._
