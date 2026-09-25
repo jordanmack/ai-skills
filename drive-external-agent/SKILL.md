@@ -93,28 +93,30 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Primary | Secondary | Flag form |
 |---|---|---|---|
-| codex | `gpt-6-astra` | `gpt-5.6-sol` | `--model <id>` |
+| codex | `gpt-6-astra` | `gpt-6-sol` | `--model <id>` |
 | grok | `grok-4.6` | `grok-4.5` | `--model <id>` |
-| claude | `opus` (`claude-opus-5`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
+| claude | `opus` (`claude-opus-5-5`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
 
 **Other tiers** — remaining models each CLI reports as available (name explicitly with `--model`; not defaults):
 
 | CLI | Model | Note |
 |---|---|---|
+| codex | `gpt-6-luna` | 6 variant; supports up to `max`. |
+| codex | `gpt-5.6-sol` | Previous secondary; supports `max` and `ultra`. |
 | codex | `gpt-5.6-terra` | 5.6 frontier variant; supports `max` and `ultra`. |
 | codex | `gpt-5.6-luna` | 5.6 variant; supports up to `max`. |
 | codex | `gpt-5.5` | Previous generation; ceiling `xhigh`. |
 | codex | `gpt-5.4` | Older generation, hidden in the picker; use when 5.5/5.6 is overkill. |
 | codex | `gpt-5.4-mini` | Smaller/cheaper 5.4, hidden; use for light tasks. |
 | codex | `gpt-5.2` | Legacy; reach only if the operator names it. |
-| claude | `fable` (`claude-fable-5`) | Most capable for hardest/longest tasks, but **most expensive** — kept out of primary/secondary for cost. Reach for it only when opus/sonnet fall short. |
+| claude | `fable` (`claude-fable-5-1`) | Most capable for hardest/longest tasks, but **most expensive** — kept out of primary/secondary for cost. Reach for it only when opus/sonnet fall short. |
 | claude | `haiku` (`claude-haiku-4-5-20251001`) | Fastest, for quick answers. |
 
 **Reasoning-effort policy:** every external agent run must pass an explicit effort flag. If the operator specified a thinking / reasoning-effort level for this run, use that exact level **only when the selected model supports it** — if not, fail the run (non-zero exit / report to operator); do not silently clamp or downgrade. Otherwise use the model's default level from the ladder below. Defaults are set per model so they can diverge over time; as of today every effort-capable model defaults to `high`. Never rely on CLI defaults or user config. This skill is the enforcement point for external spawns, including calls from **autonomous** and **adversarial-review**; caller-provided run context that explicitly names an effort level takes precedence over the per-model default. The exact flag and its full ladder per CLI (so you never look it up):
 
 | CLI | Effort flag | Levels available (low → high) | Default (today) | Ceiling (by model) |
 |---|---|---|---|---|
-| codex | `-c 'model_reasoning_effort="<level>"'` | **6-astra / 5.6-sol / 5.6-terra:** `low, medium, high, xhigh, max, ultra` · **5.6-luna:** `low, medium, high, xhigh, max` · **5.5 / 5.4 / 5.4-mini / 5.2:** `low, medium, high, xhigh` | **`high`** | `ultra` on `gpt-6-astra`/`gpt-5.6-sol`/`gpt-5.6-terra`; `max` on `gpt-5.6-luna`; `xhigh` on `gpt-5.5` and legacy 5.x |
+| codex | `-c 'model_reasoning_effort="<level>"'` | **6-astra / 6-sol / 5.6-sol / 5.6-terra:** `low, medium, high, xhigh, max, ultra` · **6-luna / 5.6-luna:** `low, medium, high, xhigh, max` · **5.5 / 5.4 / 5.4-mini / 5.2:** `low, medium, high, xhigh` | **`high`** | `ultra` on `gpt-6-astra`/`gpt-6-sol`/`gpt-5.6-sol`/`gpt-5.6-terra`; `max` on `gpt-6-luna`/`gpt-5.6-luna`; `xhigh` on `gpt-5.5` and legacy 5.x |
 | grok | `--effort <level>` | `low, medium, high, xhigh` | **`high`** | `xhigh` |
 | claude | `--effort <level>` | `low, medium, high, xhigh, max` | **`high`** | `max` |
 
@@ -176,8 +178,8 @@ printf '%s' "$PROMPT" | codex exec \
 # Mode C: swap --sandbox workspace-write; drop --skip-git-repo-check if operating in a repo; prompt defines the job.
 ```
 
-- **Model**: default `--model gpt-6-astra` (strongest); secondary `--model gpt-5.6-sol`. Always pin — defaults drift.
-- **Thinking**: default to `high` (set `-c 'model_reasoning_effort="high"'`); every codex model supports it. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it (ceilings: `ultra` on `gpt-6-astra`/`gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-5.6-luna`, `xhigh` on `gpt-5.5` and legacy 5.x); otherwise fail and report. Never omit the setting.
+- **Model**: default `--model gpt-6-astra` (strongest); secondary `--model gpt-6-sol`. Always pin — defaults drift.
+- **Thinking**: default to `high` (set `-c 'model_reasoning_effort="high"'`); every codex model supports it. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it (ceilings: `ultra` on `gpt-6-astra`/`gpt-6-sol`/`gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-6-luna`/`gpt-5.6-luna`, `xhigh` on `gpt-5.5` and legacy 5.x); otherwise fail and report. Never omit the setting.
 
 ### grok (xAI)
 
@@ -271,7 +273,7 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Mode C: omit --tools (full toolset); keep --effort at the resolved level; the prompt defines scope/guardrails.
 ```
 
-- **Model**: default `--model opus` (`claude-opus-5`, strongest); secondary `--model sonnet` (`claude-sonnet-5`). Aliases or full IDs both work.
+- **Model**: default `--model opus` (`claude-opus-5-5`, strongest); secondary `--model sonnet` (`claude-sonnet-5`). Aliases or full IDs both work.
 - **Thinking**: default to `--effort high` (claude's ceiling is `max`, available on operator override). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Never omit the effort flag.
 - **MCP/LSP residue**: `--tools ""` **on its own** still leaves LSP plus any authenticated MCP tools live (verified: Gmail/Drive/Calendar auth tools remained) — which is why the Mode A example above pairs it with `--strict-mcp-config` to drop MCP (LSP still survives). Without `--strict-mcp-config` those MCP tools can reach the network/external data; with it, you're left with LSP only. The no-explore preamble backs up the built-in cut regardless.
 - **Don't trust the agent's self-report of its tools**: with the same flags, claude sometimes claims it has Write/Bash/etc. and sometimes correctly says it doesn't (verified — the actual capability cut holds either way; only the *narration* is unreliable). Gate orchestrator logic on the flags you passed, never on what the spawned agent says it can do.
