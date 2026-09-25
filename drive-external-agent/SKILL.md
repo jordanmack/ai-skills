@@ -44,7 +44,7 @@ The agent reasons from what you wrote plus its own training knowledge, then retu
   Use an explicit `rm -rf "$CH"` after the run, **not** `trap '…' EXIT`: bash keeps only the last EXIT trap, so in a loop launching several runs only the final dir would be cleaned and earlier token copies would leak. (The window while codex holds the copied token is unavoidable; minimize it by deleting immediately after.)
   ⚠️ You **must** copy `config.toml` too — if your `auth.json` is for a custom provider configured there, a dir with only `auth.json` falls back to the real OpenAI endpoint and every call **401s** (empty output, the run fails — verified). With both files and no `AGENTS.md`, the global rules don't load (verified — the agent can't quote them). Caveat: this strips the global *rules* file but **not** codex's injected skills catalog (`<skills_instructions>` still loads) — cleaner, not pristine.
 - **claude** — `--bare` suppresses the global file (and hooks/LSP/plugin sync/prefetches), but needs `ANTHROPIC_API_KEY`, `apiKeyHelper` via `--settings`, or a 3P provider (Bedrock/Vertex/Foundry, which use their own creds); plain OAuth/keychain isn't read, so on a normal OAuth login `--bare` is unavailable and you'd move the global file instead.
-- **grok** — has the broadest ambient load, but two env toggles clear the part that biases a sealed opinion (verified): `GROK_CLAUDE_AGENTS_ENABLED=0` stops it applying the global `~/.claude/CLAUDE.md` rules — behaviorally confirmed with `grok-4.6`, the model the Mode A example uses (with it set, grok-4.6 returns "no ambient rules" and can't quote them; `grok inspect` still *lists* the file with `disabled:true` but it isn't applied) — and `GROK_CLAUDE_HOOKS_ENABLED=0` drops user-level Claude hooks. Add `--no-memory` for cross-session memory. Caveat: this kills the *standing-rules* bias (the thing that matters for an independent opinion) but is **not** a full clean room — plugin-sourced skills/hooks under `~/.claude/plugins` still load (same "strips rules, not skills" limit as codex). So: `GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 grok --no-memory …` — no shared-state mutation needed.
+- **grok** — has the broadest ambient load, but two env toggles clear the part that biases a sealed opinion (verified): `GROK_CLAUDE_AGENTS_ENABLED=0` stops it applying the global `~/.claude/CLAUDE.md` rules — behaviorally confirmed with `grok-4.6`, the previous primary (with it set, grok-4.6 returns "no ambient rules" and can't quote them; `grok inspect` still *lists* the file with `disabled:true` but it isn't applied) — and `GROK_CLAUDE_HOOKS_ENABLED=0` drops user-level Claude hooks. Add `--no-memory` for cross-session memory. Caveat: this kills the *standing-rules* bias (the thing that matters for an independent opinion) but is **not** a full clean room — plugin-sourced skills/hooks under `~/.claude/plugins` still load (same "strips rules, not skills" limit as codex). So: `GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 grok --no-memory …` — no shared-state mutation needed.
 
 Treat Mode A as "no *intended* FS/web access," not "zero ambient context." Use a clean-room path only when the ambient rules would genuinely bias the result; otherwise it's fine to let them load.
 
@@ -94,7 +94,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 | CLI | Primary | Secondary | Flag form |
 |---|---|---|---|
 | codex | `gpt-6-astra` | `gpt-6-sol` | `--model <id>` |
-| grok | `grok-4.6` | `grok-4.5` | `--model <id>` |
+| grok | `grok-4.7` | `grok-4.5` | `--model <id>` |
 | claude | `opus` (`claude-opus-5-5`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
 
 **Other tiers** — remaining models each CLI reports as available (name explicitly with `--model`; not defaults):
@@ -103,6 +103,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 |---|---|---|
 | codex | `gpt-6-luna` | 6 variant; supports up to `max`. |
 | codex | `gpt-5.6-sol` | Previous secondary; supports `max` and `ultra`. |
+| grok | `grok-4.6` | Previous primary; accepts `--effort`. |
 | codex | `gpt-5.6-terra` | 5.6 frontier variant; supports `max` and `ultra`. |
 | codex | `gpt-5.6-luna` | 5.6 variant; supports up to `max`. |
 | codex | `gpt-5.5` | Previous generation; ceiling `xhigh`. |
@@ -124,16 +125,16 @@ Note: grok 1.0.13 dropped `grok-composer-2.5-fast`; `grok models` now also lists
 
 ### Attaching images / files (vision)
 
-All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.6, gpt-6-astra, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
+All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.7, gpt-6-astra, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
 
 ```bash
-# Pattern verified on the former grok composer model; reasoning models (grok-4.6) expected to match — generalizes to codex/claude (both read files natively).
-GROK_CLAUDE_AGENTS_ENABLED=0 grok --no-memory --model grok-4.6 --effort high --cwd /tmp/shots \
+# Pattern verified on the former grok composer model; reasoning models (grok-4.7) expected to match — generalizes to codex/claude (both read files natively).
+GROK_CLAUDE_AGENTS_ENABLED=0 grok --no-memory --model grok-4.7 --effort high --cwd /tmp/shots \
   --single "Open /tmp/shots/a.png and /tmp/shots/b.png and review each for visual/UX issues." > "$OUT" 2>"$ERR"
 ```
 
 - **grok inline alternative (no file read):** `grok --prompt-json '<json>'` takes **ACP content blocks** — mix text and image blocks: `[{"type":"text","text":"…"},{"type":"image","data":"<RAW base64, no data: prefix>","mimeType":"image/png"}]`. Use this when the agent can't read the path (Mode A sealed) or you'd rather pass bytes inline. (A trivially tiny image — e.g. a 1×1 px — may be dismissed as "no image provided"; use a real screenshot.) `--prompt-file` is **text-only** — it does **not** carry images; use `--prompt-json` or the file-path method.
-- **Multi-image reliability:** prior `grok-build` reliably reviewed several images in one call (verified 2, 3, 7); expect `grok-4.6` to behave similarly but reconfirm before relying on it. Note answers can be terse (~80 bytes) yet complete — don't treat a short output as an error or gate a retry on length.
+- **Multi-image reliability:** prior `grok-build` reliably reviewed several images in one call (verified 2, 3, 7); expect `grok-4.7` to behave similarly but reconfirm before relying on it. Note answers can be terse (~80 bytes) yet complete — don't treat a short output as an error or gate a retry on length.
 - **Caveat — confident vision hallucinations:** vision output can invent details (a verified case: a grok reasoning model reported a duplicated-word typo in UI text that wasn't there). Treat pixel-level findings like any other model claim — **verify against the source/file** before acting (refute-before-accept).
 
 ### codex (OpenAI)
@@ -211,7 +212,7 @@ Symptom-to-cause: a grok run that produced **0 bytes on stdout AND stderr** (no 
 printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 grok \
   --prompt-file /dev/stdin \
   --cwd /tmp \
-  --model grok-4.6 \
+  --model grok-4.7 \
   --effort high \
   --sandbox read-only \
   --disable-web-search \
@@ -223,8 +224,8 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Then Read /tmp/grok-out-$$.md
 ```
 
-- **Model**: primary `--model grok-4.6` (strongest); secondary `--model grok-4.5` (accepts `--effort`, verified). Confirm the current set with `grok models`.
-- **Thinking**: grok supports `low`, `medium`, `high`, and `xhigh` via `--effort`. Default to `--effort high` (verified to run on `grok-4.6`). Ceiling is `xhigh`. If the operator or calling skill explicitly named `low`, `medium`, `high`, or `xhigh` for this run, use that value instead. Never omit `--effort` on effort-capable models. For reasoning-hard work, prefer codex or claude regardless.
+- **Model**: primary `--model grok-4.7` (strongest); secondary `--model grok-4.5` (accepts `--effort`, verified). Confirm the current set with `grok models`.
+- **Thinking**: grok supports `low`, `medium`, `high`, and `xhigh` via `--effort`. Default to `--effort high` (verified to run on `grok-4.6`; grok 1.0.41 accepts the same levels for `grok-4.7`). Ceiling is `xhigh`. If the operator or calling skill explicitly named `low`, `medium`, `high`, or `xhigh` for this run, use that value instead. Never omit `--effort` on effort-capable models. For reasoning-hard work, prefer codex or claude regardless.
 - **Subagents**: the Mode A example passes `--no-subagents` to stop fan-out. For **Mode C**, add it too unless you specifically want grok spawning subagents — they widen blast radius beyond what the prompt scopes.
 
 ### claude (Anthropic)
