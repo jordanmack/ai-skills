@@ -93,7 +93,7 @@ Each CLI pins a **primary** (the default pick, chosen for strength against cost)
 
 | CLI | Primary | Secondary | Flag form |
 |---|---|---|---|
-| codex | `gpt-6.1-sol` | `gpt-6-sol` | `--model <id>` |
+| codex | `gpt-6.1-sol` | `gpt-5.6-sol` | `--model <id>` |
 | grok | `grok-4.7` | `grok-4.6`² | `--model <id>` |
 | claude | `opus` (`claude-opus-5-5`) | `sonnet` (`claude-sonnet-5-5`) | `--model <alias\|id>` |
 
@@ -105,7 +105,7 @@ Each CLI pins a **primary** (the default pick, chosen for strength against cost)
 |---|---|---|
 | codex | `gpt-6-astra` | Frontier model, but **expensive** (like claude `fable`), so kept out of primary/secondary for cost. Reach for it only when `gpt-6.1-sol` falls short; supports `max` and `ultra`. |
 | codex | `gpt-6-luna` | 6 variant; supports up to `max`. |
-| codex | `gpt-5.6-sol` | 5.6 workhorse; supports `max` and `ultra`. |
+| codex | `gpt-6-sol` | Previous-generation 6 workhorse; supports `max` and `ultra`. |
 | codex | `gpt-5.6-terra` | 5.6 frontier variant; supports `max` and `ultra`. |
 | codex | `gpt-5.6-luna` | 5.6 variant; supports up to `max`. |
 | codex | `gpt-5.5` | Legacy; ceiling `xhigh`. |
@@ -181,7 +181,7 @@ printf '%s' "$PROMPT" | codex exec \
 # Mode C: swap --sandbox workspace-write; drop --skip-git-repo-check if operating in a repo; prompt defines the job.
 ```
 
-- **Model**: default `--model gpt-6.1-sol`; secondary `--model gpt-6-sol`. `gpt-6-astra` is stronger but expensive, so use it only on request. Always pin — defaults drift.
+- **Model**: default `--model gpt-6.1-sol`; secondary `--model gpt-5.6-sol`. `gpt-6-astra` is stronger but expensive, so use it only on request. Always pin — defaults drift.
 - **Thinking**: default to `high` (set `-c 'model_reasoning_effort="high"'`); every codex model supports it. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it (ceilings: `ultra` on `gpt-6-astra`/`gpt-6.1-sol`/`gpt-6-sol`/`gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-6-luna`/`gpt-5.6-luna`, `xhigh` on `gpt-5.5`); otherwise fail and report. Never omit the setting.
 
 ### grok (xAI)
