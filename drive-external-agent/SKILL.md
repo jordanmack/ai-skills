@@ -93,35 +93,37 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Primary | Secondary | Flag form |
 |---|---|---|---|
-| codex | `gpt-6-astra` | `gpt-6-sol` | `--model <id>` |
-| grok | `grok-4.7` | `grok-4.5` | `--model <id>` |
-| claude | `opus` (`claude-opus-5-5`) | `sonnet` (`claude-sonnet-5`) | `--model <alias\|id>` |
+| codex | `gpt-6-astra` | `gpt-6.1-sol` | `--model <id>` |
+| grok | `grok-4.7` | `grok-4.6`² | `--model <id>` |
+| claude | `opus` (`claude-opus-5-5`) | `sonnet` (`claude-sonnet-5-5`) | `--model <alias\|id>` |
+
+² grok.com no longer lists `grok-4.6` (or `grok-4.5`) for this account, so `--model grok-4.6` works only through a `[model."grok-4.6"]` entry in `~/.grok/config.toml` that points at the local omni proxy (`http://127.0.0.1:18321/v1`), like the third-party entries there. Without that entry grok exits 1 with `unknown model id`.
 
 **Other tiers** — remaining models each CLI reports as available (name explicitly with `--model`; not defaults):
 
 | CLI | Model | Note |
 |---|---|---|
+| codex | `gpt-6-sol` | Previous secondary; supports `max` and `ultra`. |
 | codex | `gpt-6-luna` | 6 variant; supports up to `max`. |
-| codex | `gpt-5.6-sol` | Previous secondary; supports `max` and `ultra`. |
-| grok | `grok-4.6` | Previous primary; accepts `--effort`. |
+| codex | `gpt-5.6-sol` | 5.6 workhorse; supports `max` and `ultra`. |
 | codex | `gpt-5.6-terra` | 5.6 frontier variant; supports `max` and `ultra`. |
 | codex | `gpt-5.6-luna` | 5.6 variant; supports up to `max`. |
-| codex | `gpt-5.5` | Previous generation; ceiling `xhigh`. |
-| codex | `gpt-5.4` | Older generation, hidden in the picker; use when 5.5/5.6 is overkill. |
-| codex | `gpt-5.4-mini` | Smaller/cheaper 5.4, hidden; use for light tasks. |
-| codex | `gpt-5.2` | Legacy; reach only if the operator names it. |
+| codex | `gpt-5.5` | Legacy; ceiling `xhigh`. |
 | claude | `fable` (`claude-fable-5-1`) | Most capable for hardest/longest tasks, but **most expensive** — kept out of primary/secondary for cost. Reach for it only when opus/sonnet fall short. |
+| claude | `claude-sonnet-5` | Previous secondary (no alias; `sonnet` now resolves to 5.5). |
 | claude | `haiku` (`claude-haiku-4-5-20251001`) | Fastest, for quick answers. |
 
 **Reasoning-effort policy:** every external agent run must pass an explicit effort flag. If the operator specified a thinking / reasoning-effort level for this run, use that exact level **only when the selected model supports it** — if not, fail the run (non-zero exit / report to operator); do not silently clamp or downgrade. Otherwise use the model's default level from the ladder below. Defaults are set per model so they can diverge over time; as of today every effort-capable model defaults to `high`. Never rely on CLI defaults or user config. This skill is the enforcement point for external spawns, including calls from **autonomous** and **adversarial-review**; caller-provided run context that explicitly names an effort level takes precedence over the per-model default. The exact flag and its full ladder per CLI (so you never look it up):
 
 | CLI | Effort flag | Levels available (low → high) | Default (today) | Ceiling (by model) |
 |---|---|---|---|---|
-| codex | `-c 'model_reasoning_effort="<level>"'` | **6-astra / 6-sol / 5.6-sol / 5.6-terra:** `low, medium, high, xhigh, max, ultra` · **6-luna / 5.6-luna:** `low, medium, high, xhigh, max` · **5.5 / 5.4 / 5.4-mini / 5.2:** `low, medium, high, xhigh` | **`high`** | `ultra` on `gpt-6-astra`/`gpt-6-sol`/`gpt-5.6-sol`/`gpt-5.6-terra`; `max` on `gpt-6-luna`/`gpt-5.6-luna`; `xhigh` on `gpt-5.5` and legacy 5.x |
+| codex | `-c 'model_reasoning_effort="<level>"'` | **6-astra / 6.1-sol / 6-sol / 5.6-sol / 5.6-terra:** `low, medium, high, xhigh, max, ultra` · **6-luna / 5.6-luna:** `low, medium, high, xhigh, max` · **5.5:** `low, medium, high, xhigh` | **`high`** | `ultra` on `gpt-6-astra`/`gpt-6.1-sol`/`gpt-6-sol`/`gpt-5.6-sol`/`gpt-5.6-terra`; `max` on `gpt-6-luna`/`gpt-5.6-luna`; `xhigh` on `gpt-5.5` |
 | grok | `--effort <level>` | `low, medium, high, xhigh` | **`high`** | `xhigh` |
 | claude | `--effort <level>` | `low, medium, high, xhigh, max` | **`high`** | `max` |
 
-Note: grok 1.0.13 dropped `grok-composer-2.5-fast`; `grok models` now also lists third-party ids (`claude-opus-5`, `claude-fable-5-1`, `gpt-sol`, `gpt-terra`, `gpt-luna`, `gpt-5-5`, `deepseek-v4-*`, `kimi-k3`) — name one only when the operator asks, since it defeats the cross-model-family purpose of a grok run.
+Note: grok 1.0.13 dropped `grok-composer-2.5-fast`; `grok models` now also lists third-party ids from `~/.grok/config.toml` (`claude-opus-5`, `claude-sonnet-5-5`, `claude-fable-5-1`, `gpt-astra`, `gpt-6-1-sol`, `gpt-6-sol`, `gpt-6-luna`, `gpt-sol`, `gpt-terra`, `gpt-luna`, `gpt-5-5`, `deepseek-v4-*`, `kimi-k3`, `gemini-3-8-flash`, `grok-4.6-share-ai`). Name one only when the operator asks, since it defeats the cross-model-family purpose of a grok run. ⚠️ grok's configured default is `claude-opus-5`, so a grok run without `--model` silently runs Claude. Always pin `--model`.
+
+⚠️ **grok free-plan limits:** this grok.com account is on the free plan. Both the CLI (`You've reached your free Grok Build usage limit`, exit 1) and the proxy (`429 … subscription:free-usage-exhausted`) can refuse runs; the limit is counted per model over a rolling 24 hours. Treat it as a failed run (retry later or use another CLI), not as a bad model name.
 
 ### Attaching images / files (vision)
 
@@ -179,8 +181,8 @@ printf '%s' "$PROMPT" | codex exec \
 # Mode C: swap --sandbox workspace-write; drop --skip-git-repo-check if operating in a repo; prompt defines the job.
 ```
 
-- **Model**: default `--model gpt-6-astra` (strongest); secondary `--model gpt-6-sol`. Always pin — defaults drift.
-- **Thinking**: default to `high` (set `-c 'model_reasoning_effort="high"'`); every codex model supports it. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it (ceilings: `ultra` on `gpt-6-astra`/`gpt-6-sol`/`gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-6-luna`/`gpt-5.6-luna`, `xhigh` on `gpt-5.5` and legacy 5.x); otherwise fail and report. Never omit the setting.
+- **Model**: default `--model gpt-6-astra` (strongest); secondary `--model gpt-6.1-sol`. Always pin — defaults drift.
+- **Thinking**: default to `high` (set `-c 'model_reasoning_effort="high"'`); every codex model supports it. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it (ceilings: `ultra` on `gpt-6-astra`/`gpt-6.1-sol`/`gpt-6-sol`/`gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-6-luna`/`gpt-5.6-luna`, `xhigh` on `gpt-5.5`); otherwise fail and report. Never omit the setting.
 
 ### grok (xAI)
 
@@ -224,7 +226,7 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Then Read /tmp/grok-out-$$.md
 ```
 
-- **Model**: primary `--model grok-4.7` (strongest); secondary `--model grok-4.5` (accepts `--effort`, verified). Confirm the current set with `grok models`.
+- **Model**: primary `--model grok-4.7` (strongest); secondary `--model grok-4.6` (via the proxy entry, see note ² under *Models and reasoning effort*; ran at `--effort high`, verified). Confirm the current set with `grok models`.
 - **Thinking**: grok supports `low`, `medium`, `high`, and `xhigh` via `--effort`. Default to `--effort high` (verified to run on `grok-4.6`; grok 1.0.41 accepts the same levels for `grok-4.7`). Ceiling is `xhigh`. If the operator or calling skill explicitly named `low`, `medium`, `high`, or `xhigh` for this run, use that value instead. Never omit `--effort` on effort-capable models. For reasoning-hard work, prefer codex or claude regardless.
 - **Subagents**: the Mode A example passes `--no-subagents` to stop fan-out. For **Mode C**, add it too unless you specifically want grok spawning subagents — they widen blast radius beyond what the prompt scopes.
 
@@ -274,7 +276,7 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Mode C: omit --tools (full toolset); keep --effort at the resolved level; the prompt defines scope/guardrails.
 ```
 
-- **Model**: default `--model opus` (`claude-opus-5-5`, strongest); secondary `--model sonnet` (`claude-sonnet-5`). Aliases or full IDs both work.
+- **Model**: default `--model opus` (`claude-opus-5-5`, strongest); secondary `--model sonnet` (`claude-sonnet-5-5`). Aliases or full IDs both work.
 - **Thinking**: default to `--effort high` (claude's ceiling is `max`, available on operator override). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Never omit the effort flag.
 - **MCP/LSP residue**: `--tools ""` **on its own** still leaves LSP plus any authenticated MCP tools live (verified: Gmail/Drive/Calendar auth tools remained) — which is why the Mode A example above pairs it with `--strict-mcp-config` to drop MCP (LSP still survives). Without `--strict-mcp-config` those MCP tools can reach the network/external data; with it, you're left with LSP only. The no-explore preamble backs up the built-in cut regardless.
 - **Don't trust the agent's self-report of its tools**: with the same flags, claude sometimes claims it has Write/Bash/etc. and sometimes correctly says it doesn't (verified — the actual capability cut holds either way; only the *narration* is unreliable). Gate orchestrator logic on the flags you passed, never on what the spawned agent says it can do.
