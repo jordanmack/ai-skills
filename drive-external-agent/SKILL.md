@@ -89,11 +89,11 @@ Each CLI realizes the three modes differently. Pick the row for your CLI, the co
 
 ### Models and reasoning effort
 
-Each CLI pins a **primary** (strongest) and a **secondary**, so you can name either without a lookup; naming a CLI bare (just "codex"/"grok"/"claude") means **its primary**. Beyond those, the *Other tiers* table lists every remaining model the CLI itself reports, for when the operator asks for one by name. There is no "run all the models" shorthand; to review with several models, list them explicitly as a roster (that's the job of the **adversarial-review** skill, which calls this one per model). Flag form is `--model <id>` for all three (claude also accepts an alias). Model lists drift — reconfirm with `grok models`, `codex debug models` (JSON catalog), or claude's `/model` picker (claude has no headless list command).
+Each CLI pins a **primary** (the default pick, chosen for strength against cost) and a **secondary**, so you can name either without a lookup; naming a CLI bare (just "codex"/"grok"/"claude") means **its primary**. Beyond those, the *Other tiers* table lists every remaining model the CLI itself reports, for when the operator asks for one by name. There is no "run all the models" shorthand; to review with several models, list them explicitly as a roster (that's the job of the **adversarial-review** skill, which calls this one per model). Flag form is `--model <id>` for all three (claude also accepts an alias). Model lists drift — reconfirm with `grok models`, `codex debug models` (JSON catalog), or claude's `/model` picker (claude has no headless list command).
 
 | CLI | Primary | Secondary | Flag form |
 |---|---|---|---|
-| codex | `gpt-6-astra` | `gpt-6.1-sol` | `--model <id>` |
+| codex | `gpt-6.1-sol` | `gpt-6-sol` | `--model <id>` |
 | grok | `grok-4.7` | `grok-4.6`² | `--model <id>` |
 | claude | `opus` (`claude-opus-5-5`) | `sonnet` (`claude-sonnet-5-5`) | `--model <alias\|id>` |
 
@@ -103,7 +103,7 @@ Each CLI pins a **primary** (strongest) and a **secondary**, so you can name eit
 
 | CLI | Model | Note |
 |---|---|---|
-| codex | `gpt-6-sol` | Previous secondary; supports `max` and `ultra`. |
+| codex | `gpt-6-astra` | Frontier model, but **expensive** (like claude `fable`), so kept out of primary/secondary for cost. Reach for it only when `gpt-6.1-sol` falls short; supports `max` and `ultra`. |
 | codex | `gpt-6-luna` | 6 variant; supports up to `max`. |
 | codex | `gpt-5.6-sol` | 5.6 workhorse; supports `max` and `ultra`. |
 | codex | `gpt-5.6-terra` | 5.6 frontier variant; supports `max` and `ultra`. |
@@ -127,7 +127,7 @@ Note: grok 1.0.13 dropped `grok-composer-2.5-fast`; `grok models` now also lists
 
 ### Attaching images / files (vision)
 
-All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.7, gpt-6-astra, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
+All three CLIs are agentic and have a file-reading tool, and their pinned models are expected to be vision-capable (same families as prior pins: grok-4.7, gpt-6.1-sol, claude) — so the **universal, simplest way to feed an image (screenshot, mockup, diagram) is to drop the file on disk and name its path in the prompt**: *"Open and look at `/tmp/shot.png`, then …"*. The agent calls its own read tool to load and actually see the pixels. No base64, no special flag. This works in any mode that allows reading that path (Mode B, or Mode C; for Mode A the no-explore preamble forbids file reads — use the inline form below instead). Point it at several paths to review multiple images at once.
 
 ```bash
 # Pattern verified on the former grok composer model; reasoning models (grok-4.7) expected to match — generalizes to codex/claude (both read files natively).
@@ -163,7 +163,7 @@ codex exec … - < "$PROMPT_FILE"               # file redirect into the - senti
 ```bash
 # Mode A (sealed second opinion):
 printf '%s' "$PROMPT" | codex exec \
-  --model gpt-6-astra \
+  --model gpt-6.1-sol \
   -c 'model_reasoning_effort="high"' \
   -c 'mcp_servers={}' \
   --sandbox read-only \
@@ -181,7 +181,7 @@ printf '%s' "$PROMPT" | codex exec \
 # Mode C: swap --sandbox workspace-write; drop --skip-git-repo-check if operating in a repo; prompt defines the job.
 ```
 
-- **Model**: default `--model gpt-6-astra` (strongest); secondary `--model gpt-6.1-sol`. Always pin — defaults drift.
+- **Model**: default `--model gpt-6.1-sol`; secondary `--model gpt-6-sol`. `gpt-6-astra` is stronger but expensive, so use it only on request. Always pin — defaults drift.
 - **Thinking**: default to `high` (set `-c 'model_reasoning_effort="high"'`); every codex model supports it. If the operator or calling skill explicitly named a level, use it only when the selected model accepts it (ceilings: `ultra` on `gpt-6-astra`/`gpt-6.1-sol`/`gpt-6-sol`/`gpt-5.6-sol`/`gpt-5.6-terra`, `max` on `gpt-6-luna`/`gpt-5.6-luna`, `xhigh` on `gpt-5.5`); otherwise fail and report. Never omit the setting.
 
 ### grok (xAI)
@@ -276,7 +276,7 @@ printf '%s' "$PROMPT" | GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0
 # Mode C: omit --tools (full toolset); keep --effort at the resolved level; the prompt defines scope/guardrails.
 ```
 
-- **Model**: default `--model opus` (`claude-opus-5-5`, strongest); secondary `--model sonnet` (`claude-sonnet-5-5`). Aliases or full IDs both work.
+- **Model**: default `--model opus` (`claude-opus-5-5`); secondary `--model sonnet` (`claude-sonnet-5-5`). Aliases or full IDs both work.
 - **Thinking**: default to `--effort high` (claude's ceiling is `max`, available on operator override). If the operator or calling skill explicitly named `low`, `medium`, `high`, `xhigh`, or `max` for this run, use that value instead. Never omit the effort flag.
 - **MCP/LSP residue**: `--tools ""` **on its own** still leaves LSP plus any authenticated MCP tools live (verified: Gmail/Drive/Calendar auth tools remained) — which is why the Mode A example above pairs it with `--strict-mcp-config` to drop MCP (LSP still survives). Without `--strict-mcp-config` those MCP tools can reach the network/external data; with it, you're left with LSP only. The no-explore preamble backs up the built-in cut regardless.
 - **Don't trust the agent's self-report of its tools**: with the same flags, claude sometimes claims it has Write/Bash/etc. and sometimes correctly says it doesn't (verified — the actual capability cut holds either way; only the *narration* is unreliable). Gate orchestrator logic on the flags you passed, never on what the spawned agent says it can do.
