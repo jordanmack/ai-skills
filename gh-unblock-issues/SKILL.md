@@ -54,7 +54,7 @@ When the gate is absent, `needs-info` and `in-progress` are the load-bearing han
 
 **Interaction style - brief before ask (hard rule).** Always **brief → question → wait** for product and authorize questions; reverse order is a skill failure.
 
-Questions are **one at a time**, live, waiting for the answer before the next (bulk authorize is still one question covering a set). Every question in the cycle carries a **progress marker** - `Question k of N` - where N is the current ask work-list total, so the operator can see progress; recompute N when rebuckets, reclassifications, or prereq skips change the list. **Concise** means a short *question*; the brief may be a few plain sentences or bullets so the fork is the only hard part left.
+Questions are **one at a time**, live, waiting for the answer before the next (bulk authorize is still one question covering a set). Ask as **plain message text** and end the turn - never through an interactive question-prompt tool (its option labels cannot hold the brief or the table, and it hides the question from the transcript). Every question in the cycle carries a **progress marker** - `Question k of N` - where N is the current ask work-list total, so the operator can see progress; recompute N when rebuckets, reclassifications, or prereq skips change the list. **Concise** means a short *question*; the brief may be a few plain sentences or bullets so the fork is the only hard part left.
 
 Each **product** question must:
 - **Lead with a product brief** covering: who is affected, what breaks today, what each option does, cost/risk of each path, and a recommended default.
@@ -126,7 +126,7 @@ Issues that only become `ready` later this run (after §3 info clear) are **not*
 
 Optional: one set-level line above the table ("all residual cleanup; no new product surface"). Ban `#N - title only` or numbers-only lists.
 
-**Hard rule - table before ask.** The full table must appear in visible output in the **same message** as the authorize question, with **one row for every issue in the pool** - never a count, a summary, or "the issues above" referring to earlier scan output. If asking via an interactive question tool, print the table as message text first (option labels cannot hold it). Asking without the complete table is a skill failure (report under **Briefing self-check** in §7).
+**Hard rule - table before ask.** The full table must appear in visible output in the **same message** as the authorize question, with **one row for every issue in the pool** - never a count, a summary, or "the issues above" referring to earlier scan output. Ask in plain message text (no interactive question-prompt tool, per the **Interaction style** rule above). Asking without the complete table is a skill failure (report under **Briefing self-check** in §7).
 
 **Ask once** (single bulk question) after the table: "Authorize these N issues for the fix pass?" Options: all / subset (list numbers) / none. Recommend a default when appropriate.
 
