@@ -201,5 +201,3 @@ Report:
 - production versus test LOC;
 - PR and merge state;
 - named follow-ups.
-
-_Adapted from [openclaw/openclaw](https://github.com/openclaw/openclaw/tree/main/.agents/skills/test-audit)._
