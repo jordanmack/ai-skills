@@ -42,7 +42,7 @@ Rows that are not confirmed get no writes.
 
 ## 4. Unblock
 
-Run `gh-unblock-issues` with the same scope. Carry the confirmed verdicts in:
+Run `gh-unblock-issues` with the operator's scope args, not the panel scope, so already-`approved` issues are still classified and batched. Carry the confirmed verdicts in:
 
 - A confirmed revised scope replaces the original proposal everywhere in the pass.
 - Add a `panel` column (survive / change) to the §2 authorize table.
