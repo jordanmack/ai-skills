@@ -46,4 +46,10 @@ ai-skills/
 
 ## Third-Party Skills
 
-Third-party skills go directly in a tool's skills directory (e.g. `~/.claude/skills/`), not in this repo.
+Third-party skills normally go directly in a tool's skills directory (e.g. `~/.claude/skills/`). Graphify is maintained here as a reviewed, shared adaptation for Claude Code, Codex, and Grok Build. See [`graphify/UPSTREAM.md`](graphify/UPSTREAM.md) for provenance and upgrade instructions.
+
+```bash
+./install.sh graphify claude
+./install.sh graphify codex
+./install.sh graphify grok
+```
